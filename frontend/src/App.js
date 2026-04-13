@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 // Público
 import Home from './Rols/Public/Pages/Home/Home';
@@ -29,6 +29,14 @@ import PostulacionForm from './Rols/User/Pages/PostulacionForm';
 
 
 function App() {
+  const renderProtectedRoute = (element) => {
+    if (!user) {
+      return <Navigate to="/" replace />;
+    }
+
+    return element;
+  };
+
   // Manejar éxito de login/registro
   const handleAuthSuccess = (userData) => {
     // Forzar que el token se guarde correctamente
@@ -104,16 +112,16 @@ function App() {
         <main className="main-content">
           <Routes>
             <Route path="/" element={user ? <Dashboard user={user} /> : <Home user={user} />} />
-            <Route path="/login" element={<Login onSuccess={handleAuthSuccess} />} />
-            <Route path="/register" element={<Register onSuccess={handleAuthSuccess} />} />
+            <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login onSuccess={handleAuthSuccess} />} />
+            <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register onSuccess={handleAuthSuccess} />} />
             <Route path="/simulador" element={user ? <UserLoanSimulator /> : <LoanSimulator />} />
-            <Route path="/simulador-avanzado" element={user ? <AdvancedLoanSimulator user={user} /> : <Login onSuccess={handleAuthSuccess} />} />
+            <Route path="/simulador-avanzado" element={renderProtectedRoute(<AdvancedLoanSimulator user={user} />)} />
             <Route path="/logica-simulador" element={user ? <LoanLogic /> : <BasicLoanLogic />} />
             <Route path="/logica-simulador-basico" element={user ? <UserBasicLoanLogic /> : <BasicLoanLogic />} />
-            <Route path="/historial" element={user ? <HistorialSimulaciones user={user} /> : <Login onSuccess={handleAuthSuccess} />} />
-            <Route path="/notificaciones" element={user ? <Notificaciones user={user} /> : <Login onSuccess={handleAuthSuccess} />} />
-            <Route path="/configuracion" element={user ? <Configuracion user={user} setUser={setUser} /> : <Login onSuccess={handleAuthSuccess} />} />
-            <Route path="/postulacion" element={user ? <PostulacionForm user={user} /> : <Login onSuccess={handleAuthSuccess} />} />
+            <Route path="/historial" element={renderProtectedRoute(<HistorialSimulaciones user={user} />)} />
+            <Route path="/notificaciones" element={renderProtectedRoute(<Notificaciones user={user} />)} />
+            <Route path="/configuracion" element={renderProtectedRoute(<Configuracion user={user} setUser={setUser} />)} />
+            <Route path="/postulacion" element={renderProtectedRoute(<PostulacionForm user={user} />)} />
             {/* Agrega más rutas si tienes más páginas */}
           </Routes>
         </main>

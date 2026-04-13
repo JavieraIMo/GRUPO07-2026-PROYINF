@@ -42,7 +42,7 @@ function SeleccionarTipoPrestamo() {
       </div>
       <div style={{marginTop:32, textAlign:'center'}}>
         <h2 style={{fontSize:'1.3rem', color:'#2563eb', fontWeight:700, marginBottom:8}}>¿Quieres una simulación más realista?</h2>
-        <p style={{marginBottom:16, color:'#374151'}}>Simula con tus datos reales y obtén una evaluación crediticia simulada (scoring) para saber si tu préstamo sería aprobado.</p>
+        <p style={{marginBottom:16, color:'#374151'}}>Simula con tus datos reales y obtén una evaluación crediticia simulada (scoring) para saber si tu préstamo sería preaprobado.</p>
         <a href="/simulador-avanzado" style={{
           display:'inline-block',
           background:'linear-gradient(90deg, #2563eb 0%, #1e40af 100%)',

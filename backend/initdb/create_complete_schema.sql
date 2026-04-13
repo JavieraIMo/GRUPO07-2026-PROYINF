@@ -25,6 +25,8 @@ CREATE TABLE clientes (
     ingresos DECIMAL(12,2),
     historial_crediticio TEXT,
     password_hash TEXT NOT NULL,
+    rol VARCHAR(20) NOT NULL DEFAULT 'user',
+    claveunica_verificada BOOLEAN DEFAULT false,
     fecha_registro TIMESTAMPTZ DEFAULT NOW(),
     fecha_actualizacion TIMESTAMPTZ DEFAULT NOW(),
     activo BOOLEAN DEFAULT true,
@@ -32,7 +34,8 @@ CREATE TABLE clientes (
     -- Validaciones
     CONSTRAINT rut_format CHECK (rut ~ '^[0-9]{1,2}\.[0-9]{3}\.[0-9]{3}-[0-9kK]$'),
     CONSTRAINT email_format CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
-    CONSTRAINT ingresos_positive CHECK (ingresos IS NULL OR ingresos >= 0)
+    CONSTRAINT ingresos_positive CHECK (ingresos IS NULL OR ingresos >= 0),
+    CONSTRAINT rol_valid CHECK (rol IN ('user', 'admin'))
 );
 
 CREATE INDEX idx_clientes_rut ON clientes(rut);
@@ -99,6 +102,7 @@ CREATE TABLE simulaciones (
     tipo_prestamo VARCHAR(50) DEFAULT 'PERSONAL',
     moneda_id INTEGER REFERENCES monedas(id) DEFAULT 1,
     datos_adicionales JSONB,
+    scoring_detalle JSONB,
     fecha_simulacion TIMESTAMPTZ DEFAULT NOW(),
     origen VARCHAR(50) DEFAULT 'WEB', -- WEB, MOBILE, API
     
@@ -312,12 +316,13 @@ COMMENT ON TABLE pagos IS 'Registro de pagos realizados por clientes';
 
 COMMENT ON COLUMN clientes.rut IS 'RUT chileno formato: XX.XXX.XXX-X';
 COMMENT ON COLUMN clientes.password_hash IS 'Contraseña encriptada con bcrypt';
+COMMENT ON COLUMN clientes.rol IS 'Rol del usuario dentro de la aplicación';
 COMMENT ON COLUMN simulaciones.session_id IS 'UUID para vincular simulaciones anónimas';
 COMMENT ON COLUMN evaluaciones_riesgo.fuentes_consultadas IS 'APIs externas: Registro Civil, DICOM, etc.';
 
 
-INSERT INTO clientes (rut, nombre_completo, email, telefono, password_hash, activo) VALUES
-('12.345.678-9', 'Usuario De Prueba', 'test@alara.cl', '+56912345678', '$2b$10$dummy.hash.for.testing', true);
+INSERT INTO clientes (rut, nombre_completo, email, telefono, password_hash, rol, activo) VALUES
+('11.111.111-1', 'Administrador ALARA', 'admin@alara.cl', '+56911111111', '$2b$10$.GKUTby7AFZDbOuckqloduSF5EiCEpeMxwSjCbit9EQuw5miu7dOa', 'admin', true);
 
 
 SELECT 

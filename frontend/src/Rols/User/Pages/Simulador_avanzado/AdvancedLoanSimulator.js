@@ -14,6 +14,22 @@ function formatCLP(value) {
   return value.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
 }
 
+function getScoringStatusLabel(status) {
+  if (status === 'aprobado') {
+    return 'Preaprobado';
+  }
+
+  if (status === 'condicionado') {
+    return 'Condicionado';
+  }
+
+  if (status === 'rechazado') {
+    return 'Rechazado';
+  }
+
+  return status;
+}
+
 function calculateAmortization(monto, plazo, tasa) {
   const cuota = (monto * (tasa / 12)) / (1 - Math.pow(1 + tasa / 12, -plazo));
   let saldo = monto;
@@ -51,17 +67,32 @@ const AdvancedLoanSimulator = ({ user }) => {
   const [scoringLoading, setScoringLoading] = useState(false);
   const [scoringError, setScoringError] = useState('');
 
+  const resetScoringState = () => {
+    setShowScoringForm(false);
+    setScoringResult(null);
+    setScoringError('');
+  };
+
+  const handleToggleScoring = (checked) => {
+    setWithScoring(checked);
+    if (!checked) {
+      resetScoringState();
+    }
+  };
+
   const handleSimulate = (e) => {
     e.preventDefault();
     if (withScoring) {
+      setScoringResult(null);
+      setScoringError('');
       setShowScoringForm(true);
     } else {
+      resetScoringState();
       // Simulación sin scoring: calcular y mostrar resultados directamente
       let tasa = LOAN_TYPES.find(t => t.value === tipo)?.rate || 0.12;
       let plazoNum = usarPlazoManual ? Number(plazoManual) : Number(plazo);
       const { cuota, tabla } = calculateAmortization(monto, plazoNum, tasa);
       setResultados({ cuota, tabla, tasa, plazoNum });
-      setShowScoringForm(false);
 
       // Guardar simulación automáticamente en historial
       if (user) {
@@ -71,19 +102,7 @@ const AdvancedLoanSimulator = ({ user }) => {
           plazo: plazoNum,
           tasa,
           cuota,
-          tabla,
-          scoring_detalle: {
-            // Valores por defecto para simulación sin scoring
-            dicom: false,
-            pensionAlimenticia: false,
-            ingresos: 0,
-            historial: 'no scoring',
-            antiguedad: 0,
-            endeudamiento: 0,
-            estado: 'default',
-            scoring: null,
-            breakdown: null
-          }
+          tabla
         };
         handleGuardarSimulacion(simData);
       }
@@ -143,6 +162,7 @@ const AdvancedLoanSimulator = ({ user }) => {
 
         const { cuota, tabla } = calculateAmortization(monto, plazoNum, tasaAjustada);
         setResultados({ cuota, tabla, tasa: tasaAjustada, plazoNum });
+        setShowScoringForm(false);
 
         // Guardar simulación automáticamente en historial si user existe
         if (user) {
@@ -178,7 +198,16 @@ const AdvancedLoanSimulator = ({ user }) => {
     if (!user) return;
     setGuardando(true);
     setMensaje(null);
-    console.log('[ALARA][Frontend] Enviando simulación:', simData);
+    const payload = {
+      tipo: simData.tipo,
+      monto: simData.monto,
+      plazo: simData.plazo,
+      tasa: simData.tasa,
+      cuota: simData.cuota,
+      tabla: simData.tabla,
+      ...(simData.scoring_detalle ? { scoring_detalle: simData.scoring_detalle } : {})
+    };
+    console.log('[ALARA][Frontend] Enviando simulación:', payload);
     try {
       const response = await fetch('http://localhost:3100/api/simulaciones', {
         method: 'POST',
@@ -186,7 +215,7 @@ const AdvancedLoanSimulator = ({ user }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${user.token}`,
         },
-        body: JSON.stringify(simData),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       console.log('[ALARA][Frontend] Respuesta backend:', data);
@@ -208,16 +237,25 @@ const AdvancedLoanSimulator = ({ user }) => {
       <h2>Simulador Avanzado de Préstamos</h2>
       {!showScoringForm && (
         <form className="sim-form" onSubmit={handleSimulate}>
-          <div style={{marginBottom: '18px'}}>
-            <label>
-              <input
-                type="checkbox"
-                checked={withScoring}
-                onChange={e => setWithScoring(e.target.checked)}
-                style={{marginRight: '8px'}}
-              />
-              Agregar scoring a la simulación
-            </label>
+          <div className={`scoring-toggle-card ${withScoring ? 'scoring-toggle-card-active' : ''}`}>
+            <div className="scoring-toggle-copy">
+              <div className="scoring-toggle-header">
+                <span className="scoring-toggle-badge">Opcional</span>
+                <span className="scoring-toggle-title">Agregar scoring a la simulación</span>
+              </div>
+              <span className="scoring-toggle-description">
+                Evalúa riesgo crediticio y guarda el resultado en el historial solo cuando esta opción esté activada.
+              </span>
+            </div>
+            <button
+              type="button"
+              className={`scoring-toggle-button ${withScoring ? 'scoring-toggle-button-active' : ''}`}
+              onClick={() => handleToggleScoring(!withScoring)}
+              aria-pressed={withScoring}
+            >
+              <span className="scoring-toggle-button-state">{withScoring ? 'Activado' : 'Desactivado'}</span>
+              <span className="scoring-toggle-button-hint">{withScoring ? 'Con scoring' : 'Sin scoring'}</span>
+            </button>
           </div>
           <label>Tipo de préstamo:</label>
           <select value={tipo} onChange={e => setTipo(e.target.value)}>
@@ -320,7 +358,7 @@ const AdvancedLoanSimulator = ({ user }) => {
             </ul>
             <div style={{margin:'1rem 0',fontWeight:600,fontSize:'1.1rem'}}>
               {scoringResult.estado === 'aprobado' && (
-                <span style={{color:'#059669'}}>¡Aprobado! Puedes continuar con la solicitud formal.</span>
+                <span style={{color:'#059669'}}>¡Preaprobado! Puedes continuar con la solicitud formal para evaluación final.</span>
               )}
               {scoringResult.estado === 'condicionado' && (
                 <span style={{color:'#eab308'}}>Condicionado. Un ejecutivo revisará tu caso y podría requerir más antecedentes.</span>
@@ -334,6 +372,7 @@ const AdvancedLoanSimulator = ({ user }) => {
           <div style={{flex:'1 1 260px',background:'#fff',borderRadius:10,padding:'1rem',boxShadow:'0 2px 8px #0001',minWidth:220}}>
             <h4 style={{marginTop:0,marginBottom:'0.7rem',color:'#001763'}}>Datos ingresados</h4>
             <ul style={{listStyle:'none',padding:0,margin:0,fontSize:'1rem'}}>
+              <li><b>Resultado:</b> {getScoringStatusLabel(scoringResult.estado)}</li>
               <li><b>DICOM:</b> {scoringResult.dicom !== undefined ? (scoringResult.dicom ? 'Sí' : 'No') : '-'}</li>
               <li><b>Pensión alimenticia:</b> {scoringResult.pensionAlimenticia !== undefined ? (scoringResult.pensionAlimenticia ? 'Sí' : 'No') : '-'}</li>
               <li><b>Ingresos:</b> {scoringResult.ingresos !== undefined ? scoringResult.ingresos.toLocaleString('es-CL') : '-'}</li>

@@ -26,6 +26,7 @@ class User {
         this.email = data.email;
         this.telefono = data.telefono;
         this.password_hash = data.password_hash;
+        this.rol = data.rol || 'user';
         this.fecha_registro = data.fecha_registro;
         this.activo = data.activo;
         this.claveunica_verificada = data.claveunica_verificada || false;
@@ -49,16 +50,17 @@ class User {
             const saltRounds = 10;
             const password_hash = await bcrypt.hash(userData.password, saltRounds);
             const query = `
-                INSERT INTO clientes (rut, nombre_completo, email, telefono, password_hash)
-                VALUES ($1, $2, $3, $4, $5)
-                RETURNING id, rut, nombre_completo, email, telefono, fecha_registro, activo, claveunica_verificada
+                INSERT INTO clientes (rut, nombre_completo, email, telefono, password_hash, rol)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING id, rut, nombre_completo, email, telefono, rol, fecha_registro, activo, claveunica_verificada
             `;
             const values = [
                 userData.rut,
                 userData.nombre_completo,
                 userData.email,
                 userData.telefono || null,
-                password_hash
+                password_hash,
+                userData.rol || 'user'
             ];
             const result = await db.query(query, values);
             return new User(result.rows[0]);

@@ -19,7 +19,7 @@ Antes de comenzar, asegúrate de tener instalado:
    - `3100` - Backend API
    - `3101` - Frontend React  
    - `5433` - PostgreSQL
-   - `5050` - pgAdmin
+   - `5051` - pgAdmin
 
 ## ⚡ Instalación Rápida
 
@@ -42,13 +42,32 @@ Una vez iniciado, podrás acceder a:
 |-----------------|-----------------------|---------------------------|
 | **Frontend**    | http://localhost:3101 | ------------------------- |
 | **Backend API** | http://localhost:3100 | ------------------------- |
-| **pgAdmin**     | http://localhost:5050 | admin@alara.cl / admin123 |
+| **pgAdmin**     | http://localhost:5051 | admin@alara.cl / admin123 |
+| **Login ALARA** | http://localhost:3101 | admin@alara.cl / admin123 |
+
+## 🔐 Login Administrador ALARA
+
+Al iniciar una base nueva, ALARA crea un usuario administrador por defecto para entrar a la aplicación:
+
+- **URL:** http://localhost:3101
+- **Correo:** `admin@alara.cl`
+- **Contraseña:** `admin123`
+- **Rol:** `admin`
+
+Pasos para ingresar:
+
+1. Abre http://localhost:3101
+2. Entra a la pantalla de login de ALARA
+3. Ingresa `admin@alara.cl` y `admin123`
+
+> Si tu base de datos fue creada antes de este cambio, este usuario puede no existir todavía.
+> En ese caso, reconstruye los contenedores con la base limpia o aplica la migración correspondiente.
 
 ## 🗄️ Configuración de Base de Datos
 
 ### Conectar pgAdmin a PostgreSQL
 
-1. Ir a http://localhost:5050
+1. Ir a http://localhost:5051
 2. Login con: `admin@alara.cl` / `admin123`
 3. Crear servidor:
    - **General Tab:** Name = `ALARA Database`
@@ -58,6 +77,9 @@ Una vez iniciado, podrás acceder a:
      - Database: `mydb`
      - Username: `user`
      - Password: `password`
+
+> `admin@alara.cl / admin123` se usa tanto para entrar a pgAdmin como para el usuario administrador seed de la aplicación.
+> La aplicación ahora crea un usuario administrador por defecto con rol `admin`.
 
 ### Esquema Base
 ```sql
@@ -150,10 +172,10 @@ Después de la instalación, verifica que todo funciona:
 - [ ] `docker ps` muestra todos los contenedores activos
 - [ ] Frontend accesible en http://localhost:3101
 - [ ] Backend responde en http://localhost:3100
-- [ ] pgAdmin accesible en http://localhost:5050
+- [ ] pgAdmin accesible en http://localhost:5051
 - [ ] Base de datos conectada correctamente
 - [ ] Registro de usuario funcional
-- [ ] Login de usuario funcional
+- [ ] Login de usuario funcional con `admin@alara.cl` / `admin123`
 
 ## 🔄 Actualización del Sistema
 

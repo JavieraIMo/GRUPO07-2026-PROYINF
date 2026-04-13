@@ -17,6 +17,7 @@ function HeaderUsuario({ user, setUser }) {
       console.error('[ALARA] Error accediendo a localStorage:', err);
     }
     closeMenu();
+		navigate('/');
   };
 
   const handleVerPerfil = () => {

@@ -41,6 +41,7 @@ CREATE TABLE simulaciones (
     cuota_mensual NUMERIC(12,2) NOT NULL,
     moneda moneda_enum NOT NULL DEFAULT 'CLP',
     datos_extra JSONB,
+    scoring_detalle JSONB,
     fecha_simulacion TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 -- indices para optimizar busquedas frecuentes en simulaciones

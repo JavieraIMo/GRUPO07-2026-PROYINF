@@ -166,7 +166,7 @@ function Register({ onClose, onSuccess }) {
     try {
       const response = await fetch(`http://localhost:3100/api/check-email/${email}`);
       const data = await response.json();
-      return data.exists;
+      return Boolean(data?.data?.exists);
     } catch (error) {
       console.error('Error verificando email:', error);
       // Fallback a verificación local si falla la API
@@ -226,12 +226,29 @@ function Register({ onClose, onSuccess }) {
       console.log('[ALARA][Register] Respuesta fetch:', result);
 
       if (!response.ok) {
-        if (response.status === 409 && result.field === 'email') {
-          setErrors({ email: 'Este email ya está registrado' });
+        const apiError = result.error || result.message || 'Error al procesar el registro';
+
+        if (response.status === 409) {
+          if (apiError.toLowerCase().includes('email')) {
+            setErrors({ email: 'Este email ya está registrado' });
+            setIsLoading(false);
+            return;
+          }
+
+          if (apiError.toLowerCase().includes('rut')) {
+            setErrors({ rut: 'Este RUT ya está registrado' });
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        if (response.status === 400) {
+          setErrors({ general: apiError });
           setIsLoading(false);
           return;
         }
-        throw new Error(result.message || 'Error en el registro');
+
+        throw new Error(apiError);
       }
 
       // Registro exitoso
@@ -246,6 +263,7 @@ function Register({ onClose, onSuccess }) {
         });
         onSuccess({
           ...result.data.user,
+          nombre: result.data.user.nombre || result.data.user.nombre_completo || '',
           token: result.data.token
         });
         console.log('[ALARA][Register] Después de llamar a onSuccess');

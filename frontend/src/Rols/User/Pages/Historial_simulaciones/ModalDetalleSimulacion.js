@@ -1,13 +1,146 @@
 import React, { useState } from 'react';
 
 function formatCLP(value) {
-  return value.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return '-';
+  }
+
+  return numericValue.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
 }
 
+function formatPercent(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) {
+    return '-';
+  }
+
+  return `${(numericValue * 100).toFixed(2)}%`;
+}
+
+function getScoringStatusLabel(status) {
+  if (status === 'aprobado') {
+    return 'Preaprobado';
+  }
+
+  if (status === 'condicionado') {
+    return 'Condicionado';
+  }
+
+  if (status === 'rechazado') {
+    return 'Rechazado';
+  }
+
+  return status;
+}
+
+function parseTableRows(datosAdicionales) {
+  if (Array.isArray(datosAdicionales)) {
+    return datosAdicionales;
+  }
+
+  if (typeof datosAdicionales === 'string') {
+    try {
+      const parsed = JSON.parse(datosAdicionales);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+function buildAmortizationTable(simulacion) {
+  const monto = Number(simulacion.monto_simulado);
+  const plazo = Number(simulacion.plazo_simulado);
+  const tasa = Number(simulacion.tasa_aplicada);
+
+  if (!Number.isFinite(monto) || !Number.isFinite(plazo) || !Number.isFinite(tasa) || plazo <= 0) {
+    return [];
+  }
+
+  const monthlyRate = tasa / 12;
+  const cuotaGuardada = Number(simulacion.cuota_calculada);
+  const cuotaCalculada = monthlyRate === 0
+    ? monto / plazo
+    : (monto * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -plazo));
+  const cuota = Number.isFinite(cuotaGuardada) ? cuotaGuardada : cuotaCalculada;
+
+  if (!Number.isFinite(cuota)) {
+    return [];
+  }
+
+  let saldo = monto;
+  const rows = [];
+
+  for (let month = 1; month <= Math.min(plazo, 12); month += 1) {
+    const interes = monthlyRate === 0 ? 0 : saldo * monthlyRate;
+    const capital = cuota - interes;
+    saldo -= capital;
+
+    rows.push({
+      mes: month,
+      cuota,
+      capital,
+      interes,
+      saldo: saldo > 0 ? saldo : 0,
+    });
+  }
+
+  return rows;
+}
+
+function hasCompleteAmortizationRows(rows) {
+  return rows.length > 0 && rows.every((row) => (
+    Number.isFinite(Number(row.mes))
+    && Number.isFinite(Number(row.cuota))
+    && Number.isFinite(Number(row.capital))
+    && Number.isFinite(Number(row.interes))
+    && Number.isFinite(Number(row.saldo))
+  ));
+}
+
+function parseScoringDetail(scoringDetalle) {
+  if (!scoringDetalle) {
+    return null;
+  }
+
+  if (typeof scoringDetalle === 'string') {
+    try {
+      return JSON.parse(scoringDetalle);
+    } catch {
+      return null;
+    }
+  }
+
+  return scoringDetalle;
+}
 
 const ModalDetalleSimulacion = ({ simulacion, onClose, onDelete }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   if (!simulacion) return null;
+
+  const tablaGuardada = parseTableRows(simulacion.datos_adicionales);
+  const tablaAmortizacion = hasCompleteAmortizationRows(tablaGuardada)
+    ? tablaGuardada
+    : buildAmortizationTable(simulacion);
+  const scoringInfo = parseScoringDetail(simulacion.scoring_detalle);
+  const scoringValue = scoringInfo?.scoring ?? scoringInfo?.score;
+  const scoringStatus = scoringInfo?.estado ?? scoringInfo?.categoria;
+  const hasRealScoring = Boolean(
+    scoringInfo && (
+      scoringValue !== undefined
+      || scoringStatus
+      || scoringInfo.breakdown
+      || scoringInfo.dicom !== undefined
+      || scoringInfo.pensionAlimenticia !== undefined
+      || scoringInfo.ingresos !== undefined
+      || scoringInfo.historial
+      || scoringInfo.antiguedad !== undefined
+      || scoringInfo.endeudamiento !== undefined
+    )
+  ) && !(scoringValue === null && scoringStatus === 'default');
 
   return (
     <div style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'rgba(0,0,0,0.25)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -17,13 +150,13 @@ const ModalDetalleSimulacion = ({ simulacion, onClose, onDelete }) => {
         <h2 style={{marginBottom:'1rem'}}>Detalle de Simulación</h2>
         <div style={{marginBottom:'1.2rem'}}>
           <strong>Tipo:</strong> {simulacion.tipo_prestamo}<br/>
-          <strong>Monto:</strong> {formatCLP(Number(simulacion.monto_simulado))}<br/>
-          <strong>Plazo:</strong> {simulacion.plazo_simulado} meses<br/>
-          <strong>Tasa:</strong> {(simulacion.tasa_aplicada * 100).toFixed(2)}%<br/>
-          <strong>Cuota:</strong> {formatCLP(Number(simulacion.cuota_calculada))}<br/>
+          <strong>Monto:</strong> {formatCLP(simulacion.monto_simulado)}<br/>
+          <strong>Plazo:</strong> {simulacion.plazo_simulado ?? '-'} meses<br/>
+          <strong>Tasa:</strong> {formatPercent(simulacion.tasa_aplicada)}<br/>
+          <strong>Cuota:</strong> {formatCLP(simulacion.cuota_calculada)}<br/>
           <strong>Fecha:</strong> {simulacion.fecha_simulacion ? new Date(simulacion.fecha_simulacion).toLocaleDateString('es-CL') : ''}<br/>
         </div>
-        {simulacion.datos_adicionales && Array.isArray(simulacion.datos_adicionales) && (
+        {tablaAmortizacion.length > 0 && (
           <>
             <h3 style={{marginBottom:'0.7rem'}}>Tabla de Amortización (12 meses)</h3>
             <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'1.2rem'}}>
@@ -37,9 +170,9 @@ const ModalDetalleSimulacion = ({ simulacion, onClose, onDelete }) => {
                 </tr>
               </thead>
               <tbody>
-                {simulacion.datos_adicionales.map((row, idx) => (
+                {tablaAmortizacion.map((row, idx) => (
                   <tr key={idx}>
-                    <td>{row.mes}</td>
+                    <td>{row.mes ?? '-'}</td>
                     <td>{formatCLP(row.cuota)}</td>
                     <td>{formatCLP(row.capital)}</td>
                     <td>{formatCLP(row.interes)}</td>
@@ -52,38 +185,26 @@ const ModalDetalleSimulacion = ({ simulacion, onClose, onDelete }) => {
         )}
 
         {/* Detalles de scoring si existen */}
-        {simulacion.scoring_detalle && (
+        {hasRealScoring && (
           <div style={{marginTop:'1.5rem',background:'#f3f4f6',padding:'1rem 1.5rem',borderRadius:'10px'}}>
             <h3 style={{marginTop:0,marginBottom:'0.7rem',color:'#2563eb'}}>Scoring Crediticio</h3>
-            {typeof simulacion.scoring_detalle === 'string' ? (() => {
-              try { return JSON.parse(simulacion.scoring_detalle); } catch { return null; }
-            })() : null}
             <ul style={{listStyle:'none',padding:0,fontSize:'1rem'}}>
-              {(() => {
-                let s = simulacion.scoring_detalle;
-                if (typeof s === 'string') {
-                  try { s = JSON.parse(s); } catch { s = null; }
-                }
-                if (!s) return <li>No hay detalles de scoring.</li>;
-                return <>
-                  {s.scoring !== undefined && <li><b>Puntaje:</b> {s.scoring} / 100</li>}
-                  {s.estado && <li><b>Estado:</b> {s.estado}</li>}
-                  {s.dicom !== undefined && <li><b>DICOM:</b> {s.dicom ? 'Sí' : 'No'}</li>}
-                  {s.pensionAlimenticia !== undefined && <li><b>Pensión alimenticia:</b> {s.pensionAlimenticia ? 'Sí' : 'No'}</li>}
-                  {s.ingresos !== undefined && <li><b>Ingresos:</b> {formatCLP(Number(s.ingresos))}</li>}
-                  {s.historial && <li><b>Historial:</b> {s.historial}</li>}
-                  {s.antiguedad !== undefined && <li><b>Antigüedad:</b> {s.antiguedad} años</li>}
-                  {s.endeudamiento !== undefined && <li><b>Endeudamiento:</b> {s.endeudamiento}%</li>}
-                  {s.breakdown && (
-                    <li style={{marginTop:'0.7rem'}}>
-                      <b>Detalle de puntaje:</b>
-                      <ul style={{marginTop:'0.3rem',marginLeft:'1.2rem'}}>
-                        {Object.entries(s.breakdown).map(([k,v]) => <li key={k}>{k}: {v}</li>)}
-                      </ul>
-                    </li>
-                  )}
-                </>;
-              })()}
+              {scoringValue !== undefined && scoringValue !== null && <li><b>Puntaje:</b> {scoringValue} / 100</li>}
+              {scoringStatus && <li><b>Estado:</b> {getScoringStatusLabel(scoringStatus)}</li>}
+              {scoringInfo.dicom !== undefined && <li><b>DICOM:</b> {scoringInfo.dicom ? 'Sí' : 'No'}</li>}
+              {scoringInfo.pensionAlimenticia !== undefined && <li><b>Pensión alimenticia:</b> {scoringInfo.pensionAlimenticia ? 'Sí' : 'No'}</li>}
+              {scoringInfo.ingresos !== undefined && <li><b>Ingresos:</b> {formatCLP(scoringInfo.ingresos)}</li>}
+              {scoringInfo.historial && <li><b>Historial:</b> {scoringInfo.historial}</li>}
+              {scoringInfo.antiguedad !== undefined && <li><b>Antigüedad:</b> {scoringInfo.antiguedad} años</li>}
+              {scoringInfo.endeudamiento !== undefined && <li><b>Endeudamiento:</b> {scoringInfo.endeudamiento}%</li>}
+              {scoringInfo.breakdown && (
+                <li style={{marginTop:'0.7rem'}}>
+                  <b>Detalle de puntaje:</b>
+                  <ul style={{marginTop:'0.3rem',marginLeft:'1.2rem'}}>
+                    {Object.entries(scoringInfo.breakdown).map(([key, value]) => <li key={key}>{key}: {value}</li>)}
+                  </ul>
+                </li>
+              )}
             </ul>
           </div>
         )}

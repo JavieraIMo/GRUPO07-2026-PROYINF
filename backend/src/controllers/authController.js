@@ -92,7 +92,7 @@ class AuthController {
 
             // 9. GENERAR TOKEN JWT
             const { signToken } = require('../utils/jwt');
-            const jwtToken = signToken({ id: newUser.id, email: newUser.email });
+            const jwtToken = signToken({ id: newUser.id, email: newUser.email, rol: newUser.rol });
             console.log('[REGISTER] Token generado:', jwtToken);
 
             // 10. RESPUESTA EXITOSA CON TOKEN
@@ -172,7 +172,7 @@ class AuthController {
 
             // 4. GENERAR TOKEN JWT
             const { signToken } = require('../utils/jwt');
-            const jwtToken = signToken({ id: user.id, email: user.email });
+            const jwtToken = signToken({ id: user.id, email: user.email, rol: user.rol });
 
             // 5. RESPUESTA EXITOSA CON TOKEN
             res.status(200).json({
