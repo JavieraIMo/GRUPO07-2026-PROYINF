@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const AuthController = require('../controllers/authController');
+const { authMiddleware } = require('../middlewares/authMiddleware');
 
 // ==========================================
 // RUTAS DE AUTENTICACIÓN
@@ -40,7 +41,7 @@ router.get('/check-rut/:rut', AuthController.checkRut);
  * Obtener perfil del usuario actual
  * Requiere autenticación
  */
-router.get('/profile', AuthController.getProfile);
+router.get('/profile', authMiddleware, AuthController.getProfile);
 
 /**
  * POST /api/auth/logout

@@ -31,6 +31,30 @@ function buildSimulationDraft(simulacion) {
   };
 }
 
+function buildPaginationItems(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, 'ellipsis-right', totalPages];
+  }
+
+  if (currentPage >= totalPages - 3) {
+    return [1, 'ellipsis-left', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [
+    1,
+    'ellipsis-left',
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    'ellipsis-right',
+    totalPages,
+  ];
+}
+
 const HistorialSimulaciones = ({ user }) => {
   const navigate = useNavigate();
   const [detalleSim, setDetalleSim] = useState(null);
@@ -95,7 +119,7 @@ const HistorialSimulaciones = ({ user }) => {
           const ordenadas = [...data.simulaciones].sort((a, b) => new Date(b.fecha_simulacion) - new Date(a.fecha_simulacion));
           setSimulaciones(ordenadas);
         } else {
-          setError(data.error || 'Error al cargar historial');
+          setError(data.error || 'Error al cargar historial de simulaciones');
         }
         setLoading(false);
       })
@@ -105,8 +129,8 @@ const HistorialSimulaciones = ({ user }) => {
       });
   }, [user]);
 
-  if (!user) return <div style={{textAlign:'center',marginTop:'2rem'}}>Debes iniciar sesión para ver tu historial.</div>;
-  if (loading) return <div style={{textAlign:'center',marginTop:'2rem'}}>Cargando historial...</div>;
+  if (!user) return <div style={{textAlign:'center',marginTop:'2rem'}}>Debes iniciar sesión para ver tu historial de simulaciones.</div>;
+  if (loading) return <div style={{textAlign:'center',marginTop:'2rem'}}>Cargando historial de simulaciones...</div>;
   if (error) return <div style={{textAlign:'center',marginTop:'2rem',color:'#b91c1c'}}>{error}</div>;
 
   // Filtros
@@ -126,91 +150,169 @@ const HistorialSimulaciones = ({ user }) => {
     }
     return ok;
   });
+
+  const numeroSimulacionPorId = simulaciones
+    .slice()
+    .sort((a, b) => {
+      const fechaA = new Date(a.fecha_simulacion).getTime();
+      const fechaB = new Date(b.fecha_simulacion).getTime();
+
+      if (fechaA !== fechaB) {
+        return fechaA - fechaB;
+      }
+
+      return a.id - b.id;
+    })
+    .reduce((acc, sim, index) => {
+      acc[sim.id] = index + 1;
+      return acc;
+    }, {});
+
   // Paginación
   const totalPages = Math.ceil(simulacionesFiltradas.length / PAGE_SIZE);
   const simulacionesPagina = simulacionesFiltradas.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+  const paginationItems = buildPaginationItems(page, totalPages);
+
+  const renderPagination = (extraClassName = '') => (
+    <div className={`historial-pagination historial-pagination-numeric ${extraClassName}`.trim()}>
+      <button className="historial-pagination-nav" onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1}>
+        Anterior
+      </button>
+      <div className="historial-pagination-pages">
+        {paginationItems.map((item) => (
+          item === 'ellipsis-left' || item === 'ellipsis-right'
+            ? <span key={item} className="historial-pagination-ellipsis">...</span>
+            : (
+              <button
+                key={item}
+                className={`historial-pagination-page ${item === page ? 'historial-pagination-page-active' : ''}`}
+                onClick={() => setPage(item)}
+                aria-current={item === page ? 'page' : undefined}
+              >
+                {item}
+              </button>
+            )
+        ))}
+      </div>
+      <button className="historial-pagination-nav" onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages}>
+        Siguiente
+      </button>
+    </div>
+  );
 
   return (
     <div className="advanced-simulator historial-simulaciones">
       <h2>Historial de Simulaciones</h2>
-      <div style={{display:'flex',gap:'1rem',margin:'1rem 0',flexWrap:'wrap'}}>
-        <div>
-          <label style={{fontWeight:500}}>Monto mínimo:&nbsp;</label>
-          <input type="number" min="0" value={filtroMonto} onChange={e=>{setFiltroMonto(e.target.value);setPage(1);}} style={{padding:'4px 8px',borderRadius:'4px',border:'1px solid #d1d5db'}} placeholder="Ej: 1000000" />
-        </div>
-        <div>
-          <label style={{fontWeight:500}}>Tipo de préstamo:&nbsp;</label>
-          <select value={filtroTipo} onChange={e=>{setFiltroTipo(e.target.value);setPage(1);}} style={{padding:'4px 8px',borderRadius:'4px',border:'1px solid #d1d5db'}}>
-            <option value="">Todos</option>
-            <option value="personal">Personal</option>
-            <option value="automotriz">Automotriz</option>
-            <option value="hipotecario">Hipotecario</option>
-            <option value="empresarial">Empresarial</option>
-          </select>
-        </div>
-        <div>
-          <label style={{fontWeight:500}}>Fecha:&nbsp;</label>
-          <input type="date" value={filtroFecha} onChange={e=>{setFiltroFecha(e.target.value);setPage(1);}} style={{padding:'4px 8px',borderRadius:'4px',border:'1px solid #d1d5db'}} />
+      <div className="historial-toolbar">
+        <div className="historial-filtros-card">
+          <div className="historial-filtros-header">
+            <div className="historial-filtros-heading">
+              <p className="historial-filtros-kicker">Filtrar resultados</p>
+              <h3>Encuentra una simulación rápido</h3>
+            </div>
+            <div className="historial-stats-row">
+              <div className="historial-stat-chip">
+                <span className="historial-stat-label">Registradas</span>
+                <strong>{simulaciones.length}</strong>
+              </div>
+              <div className="historial-stat-chip historial-stat-chip-active">
+                <span className="historial-stat-label">Con filtros</span>
+                <strong>{simulacionesFiltradas.length}</strong>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="historial-clear-filters"
+              onClick={() => {
+                setFiltroMonto('');
+                setFiltroTipo('');
+                setFiltroFecha('');
+                setPage(1);
+              }}
+            >
+              Limpiar filtros
+            </button>
+          </div>
+          <div className="historial-filtros-grid">
+            <label className="historial-filter-field">
+              <span>Monto mínimo</span>
+              <input type="number" min="0" value={filtroMonto} onChange={e=>{setFiltroMonto(e.target.value);setPage(1);}} placeholder="Ej: 1000000" />
+            </label>
+            <label className="historial-filter-field">
+              <span>Tipo de préstamo</span>
+              <select value={filtroTipo} onChange={e=>{setFiltroTipo(e.target.value);setPage(1);}}>
+                <option value="">Todos</option>
+                <option value="personal">Personal</option>
+                <option value="automotriz">Automotriz</option>
+                <option value="hipotecario">Hipotecario</option>
+                <option value="empresarial">Empresarial</option>
+              </select>
+            </label>
+            <label className="historial-filter-field">
+              <span>Fecha</span>
+              <input type="date" value={filtroFecha} onChange={e=>{setFiltroFecha(e.target.value);setPage(1);}} />
+            </label>
+          </div>
         </div>
       </div>
-      <div style={{margin:'0.5rem 0',fontWeight:500,fontSize:'1rem',color:'#2563eb',display:'flex',gap:'2rem',alignItems:'center'}}>
-        <span>Total de simulaciones registradas: {simulaciones.length}</span>
-        <span>Total encontradas con filtros: {simulacionesFiltradas.length}</span>
-      </div>
+      {simulacionesFiltradas.length > 0 && totalPages > 1 && (
+        renderPagination('historial-pagination-top')
+      )}
       {simulacionesFiltradas.length === 0 ? (
-        <div style={{textAlign:'center',marginTop:'2rem',color:'#b91c1c',fontWeight:500,padding:'1.5rem 0'}}>
-          <span style={{fontSize:'2.2rem',display:'block',marginBottom:'0.5rem'}}>🔎</span>
-          <span style={{fontSize:'1.1rem'}}>No se han encontrado simulaciones que coincidan con los filtros seleccionados.</span><br/>
-          <span style={{fontWeight:400,color:'#444'}}>Revisa los valores ingresados o prueba eliminando algún filtro para ver más resultados.</span>
+        <div className="historial-empty-state">
+          <span className="historial-empty-icon">🔎</span>
+          <span className="historial-empty-title">No se han encontrado simulaciones que coincidan con los filtros seleccionados.</span>
+          <span className="historial-empty-copy">Revisa los valores ingresados o prueba eliminando algún filtro para ver más resultados.</span>
         </div>
       ) : (
         <>
-        <table style={{width:'100%',marginTop:'1.5rem',borderCollapse:'collapse'}}>
-          <thead>
-            <tr style={{background:'#f3f4f6',color:'#2563eb',fontWeight:600}}>
-              <th>Fecha</th>
-              <th>Tipo</th>
-              <th>Monto</th>
-              <th>Plazo</th>
-              <th>Tasa</th>
-              <th>Cuota</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {simulacionesPagina.map(sim => (
-              <tr key={sim.id}>
-                <td>{sim.fecha_simulacion ? new Date(sim.fecha_simulacion).toLocaleDateString('es-CL') : ''}</td>
-                <td>{sim.tipo_prestamo}</td>
-                <td>{formatCLP(Number(sim.monto_simulado))}</td>
-                <td>{sim.plazo_simulado} meses</td>
-                <td>{(sim.tasa_aplicada * 100).toFixed(2)}%</td>
-                <td>{formatCLP(Number(sim.cuota_calculada))}</td>
-                <td style={{textAlign:'left'}}>
-                  <div style={{display:'flex',gap:'0.5rem',justifyContent:'flex-start',flexWrap:'wrap'}}>
-                    <button onClick={() => setDetalleSim(sim)} style={{background:'#2563eb',color:'#fff',border:'none',borderRadius:'6px',padding:'0.3rem 0.7rem',fontWeight:500,cursor:'pointer'}}>Ver detalle</button>
-                    {!sim.estado_postulacion && (
-                      <button
-                        onClick={() => handleGoToApplication(sim)}
-                        style={{background:'#001763',color:'#fff',border:'none',borderRadius:'6px',padding:'0.3rem 0.7rem',fontWeight:600,cursor:'pointer'}}
-                      >
-                        {parseScoringDetail(sim.scoring_detalle)?.estado === 'aprobado' ? 'Ir a postular' : 'Completar scoring'}
-                      </button>
-                    )}
-                  </div>
-                </td>
+        <div className="historial-table-shell">
+          <table className="historial-table">
+            <thead>
+              <tr>
+                <th>N° Simulación</th>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Monto</th>
+                <th>Plazo</th>
+                <th>Tasa</th>
+                <th>Cuota</th>
+                <th>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        <div style={{display:'flex',justifyContent:'center',marginTop:'18px',gap:'8px'}}>
-          <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{padding:'6px 16px',borderRadius:'6px',border:'1px solid #d1d5db',background:'#f3f4f6',color:'#001763',fontWeight:500,cursor:page===1?'not-allowed':'pointer'}}>Anterior</button>
-          <span style={{alignSelf:'center'}}>Página {page} de {totalPages}</span>
-          <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} disabled={page===totalPages} style={{padding:'6px 16px',borderRadius:'6px',border:'1px solid #d1d5db',background:'#f3f4f6',color:'#001763',fontWeight:500,cursor:page===totalPages?'not-allowed':'pointer'}}>Siguiente</button>
+            </thead>
+            <tbody>
+              {simulacionesPagina.map(sim => (
+                <tr key={sim.id}>
+                  <td>#{numeroSimulacionPorId[sim.id] || sim.id}</td>
+                  <td>{sim.fecha_simulacion ? new Date(sim.fecha_simulacion).toLocaleDateString('es-CL') : ''}</td>
+                  <td>{sim.tipo_prestamo}</td>
+                  <td>{formatCLP(Number(sim.monto_simulado))}</td>
+                  <td>{sim.plazo_simulado} meses</td>
+                  <td>{(sim.tasa_aplicada * 100).toFixed(2)}%</td>
+                  <td>{formatCLP(Number(sim.cuota_calculada))}</td>
+                  <td className="historial-actions-cell">
+                    <div className="historial-actions-group">
+                      <button className="historial-action-button historial-action-primary" onClick={() => setDetalleSim(sim)}>Ver detalle</button>
+                      {!sim.estado_postulacion && (
+                        <button
+                          className="historial-action-button historial-action-secondary"
+                          onClick={() => handleGoToApplication(sim)}
+                        >
+                          {parseScoringDetail(sim.scoring_detalle)?.estado === 'aprobado' ? 'Ir a postular' : 'Completar scoring'}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+        {totalPages > 1 && renderPagination()}
         {detalleSim && (
           <ModalDetalleSimulacion
             simulacion={detalleSim}
+            numeroSimulacion={numeroSimulacionPorId[detalleSim.id]}
             onClose={() => setDetalleSim(null)}
             onDelete={handleDeleteSimulacion}
           />

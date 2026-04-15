@@ -117,7 +117,7 @@ function parseScoringDetail(scoringDetalle) {
   return scoringDetalle;
 }
 
-const ModalDetalleSimulacion = ({ simulacion, onClose, onDelete }) => {
+const ModalDetalleSimulacion = ({ simulacion, numeroSimulacion, onClose, onDelete }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   if (!simulacion) return null;
 
@@ -147,8 +147,9 @@ const ModalDetalleSimulacion = ({ simulacion, onClose, onDelete }) => {
       <div style={{background:'#fff',borderRadius:'12px',padding:'2rem',minWidth:'340px',maxWidth:'90vw',maxHeight:'90vh',boxShadow:'0 2px 16px #0002',position:'relative',overflow:'hidden'}}>
         <button onClick={onClose} style={{position:'absolute',top:12,right:16,fontSize:'1.5rem',background:'none',border:'none',cursor:'pointer'}}>&times;</button>
         <div style={{overflowY:'auto',maxHeight:'75vh',paddingRight:'0.5rem'}}>
-        <h2 style={{marginBottom:'1rem'}}>Detalle de Simulación</h2>
+        <h2 style={{marginBottom:'1rem'}}>Detalle de Simulación {numeroSimulacion ? `#${numeroSimulacion}` : ''}</h2>
         <div style={{marginBottom:'1.2rem'}}>
+          <strong>N° de simulación:</strong> {numeroSimulacion ? `#${numeroSimulacion}` : '-'}<br/>
           <strong>Tipo:</strong> {simulacion.tipo_prestamo}<br/>
           <strong>Monto:</strong> {formatCLP(simulacion.monto_simulado)}<br/>
           <strong>Plazo:</strong> {simulacion.plazo_simulado ?? '-'} meses<br/>

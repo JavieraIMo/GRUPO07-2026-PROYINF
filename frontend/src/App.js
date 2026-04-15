@@ -18,6 +18,7 @@ import Configuracion from './Rols/User/Components/HeaderUsuario/Configuracion';
 import SeleccionarTipoPrestamo from './Rols/User/Pages/SeleccionarTipoPrestamo';
 import LoanLogic from './Rols/User/Pages/Simulador_avanzado/Logica_de_simulacion/LoanLogic';
 import HistorialSimulaciones from './Rols/User/Pages/Historial_simulaciones/HistorialSimulaciones';
+import HistorialPostulaciones from './Rols/User/Pages/Historial_postulaciones/HistorialPostulaciones';
 import HeaderUsuario from './Rols/User/Components/HeaderUsuario/Header';
 import UserLoanSimulator from './Rols/User/Pages/Simulador_basico/LoanSimulator';
 import UserBasicLoanLogic from './Rols/User/Pages/Simulador_basico/Logica_simulador/BasicLoanLogic';
@@ -75,6 +76,41 @@ function App() {
   }, [user]);
 
   useEffect(() => {
+    if (!user?.token) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    fetch('http://localhost:3100/api/auth/profile', {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Sesion invalida');
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        if (!data.success || !data.data?.user) {
+          throw new Error('Sesion invalida');
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setUser(null);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?.token]);
+
+  useEffect(() => {
     // Actualizar el título y favicon dinámicamente
     document.title = 'ALARA Simulador - Simulador de Préstamos';
     
@@ -118,7 +154,9 @@ function App() {
             <Route path="/simulador-avanzado" element={renderProtectedRoute(<AdvancedLoanSimulator user={user} />)} />
             <Route path="/logica-simulador" element={user ? <LoanLogic /> : <BasicLoanLogic />} />
             <Route path="/logica-simulador-basico" element={user ? <UserBasicLoanLogic /> : <BasicLoanLogic />} />
-            <Route path="/historial" element={renderProtectedRoute(<HistorialSimulaciones user={user} />)} />
+            <Route path="/historial-simulaciones" element={renderProtectedRoute(<HistorialSimulaciones user={user} />)} />
+            <Route path="/historial-postulaciones" element={renderProtectedRoute(<HistorialPostulaciones user={user} />)} />
+            <Route path="/historial" element={<Navigate to="/historial-simulaciones" replace />} />
             <Route path="/notificaciones" element={renderProtectedRoute(<Notificaciones user={user} />)} />
             <Route path="/configuracion" element={renderProtectedRoute(<Configuracion user={user} setUser={setUser} />)} />
             <Route path="/postulacion" element={renderProtectedRoute(<PostulacionForm user={user} />)} />

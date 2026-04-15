@@ -76,7 +76,7 @@ const LoanSimulator = () => {
         setError('Error al guardar simulación: ' + response.statusText);
         return;
       }
-      navigate('/usuario/historial_simulaciones');
+      navigate('/historial-simulaciones');
     } catch (err) {
       setError('Error al guardar simulación: ' + err.message);
       console.error('Error al guardar simulación', err);

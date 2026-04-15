@@ -7,7 +7,7 @@ function LoanLogic() {
   return (
     <div className="loan-logic-page">
       <div style={{display:'flex',justifyContent:'flex-start',alignItems:'center',marginBottom:'1.5rem'}}>
-        <a href="/simulador-avanzado" style={{background:'#2563eb',color:'#fff',padding:'0.7rem 1.5rem',borderRadius:'8px',textDecoration:'none',fontWeight:600}}>Volver a Simulador Avanzado</a>
+        <a href="/simulador-avanzado" style={{background:'#2563eb',color:'#fff',padding:'0.7rem 1.5rem',borderRadius:'8px',textDecoration:'none',fontWeight:600}}>Volver a Simulador</a>
       </div>
       <h1>Lógica del Simulador de Préstamos</h1>
       <section className="logic-section">
@@ -34,7 +34,7 @@ function LoanLogic() {
         <div className="formula-box">
           <span className="formula">M = 1.000.000 × 0.00667 × (1 + 0.00667)<sup>24</sup> / [(1 + 0.00667)<sup>24</sup> - 1]</span>
         </div>
-        <h3>Simulador Avanzado</h3>
+        <h3>Simulador</h3>
         <p>
           - Permite elegir tipo de préstamo:<br/>
           &nbsp;&nbsp;• Personal: <strong>12%</strong> anual<br/>

@@ -93,7 +93,7 @@ function Header({ user, setUser }) {
             )}
             {user ? (
               <li className="nav-item">
-                <Link to="/historial" className="nav-link">Historial</Link>
+                <Link to="/historial-simulaciones" className="nav-link">Historial Simulaciones</Link>
               </li>
             ) : (
               <li className="nav-item">

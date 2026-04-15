@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { registrarSolicitud } = require('../controllers/solicitudController');
+const { registrarSolicitud, obtenerHistorialSolicitudes } = require('../controllers/solicitudController');
 const { authMiddleware } = require('../middlewares/authMiddleware');
+
+router.get('/', authMiddleware, obtenerHistorialSolicitudes);
 
 // Registrar solicitud de préstamo
 router.post('/', authMiddleware, registrarSolicitud);

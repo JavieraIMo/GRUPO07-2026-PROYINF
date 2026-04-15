@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import DatosScoringForm from './DatosScoringForm';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './AdvancedLoanSimulator.css';
@@ -67,6 +67,7 @@ const AdvancedLoanSimulator = ({ user }) => {
   const [scoringResult, setScoringResult] = useState(null);
   const [scoringLoading, setScoringLoading] = useState(false);
   const [scoringError, setScoringError] = useState('');
+  const scoringFormRef = useRef(null);
 
   const resetScoringState = () => {
     setShowScoringForm(false);
@@ -95,7 +96,7 @@ const AdvancedLoanSimulator = ({ user }) => {
       const { cuota, tabla } = calculateAmortization(monto, plazoNum, tasa);
       setResultados({ cuota, tabla, tasa, plazoNum });
 
-      // Guardar simulación automáticamente en historial
+      // Guardar simulación automáticamente en historial de simulaciones
       if (user) {
         const simData = {
           tipo,
@@ -165,7 +166,7 @@ const AdvancedLoanSimulator = ({ user }) => {
         setResultados({ cuota, tabla, tasa: tasaAjustada, plazoNum });
         setShowScoringForm(false);
 
-        // Guardar simulación automáticamente en historial si user existe
+        // Guardar simulación automáticamente en historial de simulaciones si user existe
         if (user) {
           const simData = {
             tipo,
@@ -232,6 +233,45 @@ const AdvancedLoanSimulator = ({ user }) => {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    if (showScoringForm && scoringFormRef.current) {
+      scoringFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showScoringForm]);
+
+  const buildCurrentSimulationState = () => ({
+    simulacionId: savedSimulationId,
+    simulacion: {
+      id: savedSimulationId,
+      tipo,
+      monto,
+      plazo: resultados?.plazoNum || (usarPlazoManual ? Number(plazoManual) : Number(plazo)),
+    },
+  });
+
+  const handleStartApplication = () => {
+    navigate('/postulacion', {
+      state: buildCurrentSimulationState(),
+    });
+  };
+
+  const handleCompleteScoring = () => {
+    setWithScoring(true);
+    setScoringResult(null);
+    setScoringError('');
+    setShowScoringForm(true);
+  };
+
+  const handleBackToSimulator = () => {
+    setWithScoring(false);
+    setShowScoringForm(false);
+    setScoringResult(null);
+    setScoringError('');
+    setResultados(null);
+    setSavedSimulationId(null);
+    setMensaje(null);
+  };
+
   const handleGuardarSimulacion = async (simData) => {
     // Recibe los datos como argumento para guardado automático
     if (!user) return;
@@ -276,7 +316,7 @@ const AdvancedLoanSimulator = ({ user }) => {
 
   return (
     <div className="advanced-simulator">
-      <h2>Simulador Avanzado de Préstamos</h2>
+      <h2>Simulador de Préstamos</h2>
       {!showScoringForm && (
         <form className="sim-form" onSubmit={handleSimulate}>
           <div className={`scoring-toggle-card ${withScoring ? 'scoring-toggle-card-active' : ''}`}>
@@ -286,7 +326,7 @@ const AdvancedLoanSimulator = ({ user }) => {
                 <span className="scoring-toggle-title">Agregar scoring a la simulación</span>
               </div>
               <span className="scoring-toggle-description">
-                Evalúa riesgo crediticio y guarda el resultado en el historial solo cuando esta opción esté activada.
+                Evalúa riesgo crediticio y guarda el resultado en el historial de simulaciones solo cuando esta opción esté activada.
               </span>
             </div>
             <button
@@ -382,7 +422,9 @@ const AdvancedLoanSimulator = ({ user }) => {
         </form>
       )}
       {showScoringForm && !scoringResult && (
-        <DatosScoringForm onSubmit={handleScoringSubmit} loading={scoringLoading} />
+        <div ref={scoringFormRef}>
+          <DatosScoringForm onSubmit={handleScoringSubmit} loading={scoringLoading} />
+        </div>
       )}
       {scoringError && <div style={{color:'#b91c1c',margin:'1rem 0',fontWeight:500}}>{scoringError}</div>}
       {scoringResult && (
@@ -412,21 +454,19 @@ const AdvancedLoanSimulator = ({ user }) => {
             {scoringResult.estado === 'aprobado' && (
               <button
                 type="button"
-                onClick={() => navigate('/postulacion', {
-                  state: {
-                    simulacionId: savedSimulationId,
-                    simulacion: {
-                      id: savedSimulationId,
-                      tipo,
-                      monto,
-                      plazo: resultados?.plazoNum || (usarPlazoManual ? Number(plazoManual) : Number(plazo)),
-                    },
-                  },
-                })}
-                disabled={!savedSimulationId}
-                style={{marginTop:'0.8rem',background:!savedSimulationId?'#94a3b8':'#001763',color:'#fff',border:'none',borderRadius:'8px',padding:'0.85rem 1.1rem',fontWeight:700,cursor:!savedSimulationId?'not-allowed':'pointer'}}
+                onClick={handleStartApplication}
+                style={{marginTop:'0.8rem',background:'#001763',color:'#fff',border:'none',borderRadius:'8px',padding:'0.85rem 1.1rem',fontWeight:700,cursor:'pointer'}}
               >
-                Continuar con la solicitud
+                Iniciar postulación
+              </button>
+            )}
+            {scoringResult.estado === 'rechazado' && (
+              <button
+                type="button"
+                onClick={handleBackToSimulator}
+                style={{marginTop:'0.8rem',background:'#001763',color:'#fff',border:'none',borderRadius:'8px',padding:'0.85rem 1.1rem',fontWeight:700,cursor:'pointer'}}
+              >
+                Volver al simulador
               </button>
             )}
           </div>
@@ -480,6 +520,15 @@ const AdvancedLoanSimulator = ({ user }) => {
           </table>
           {mensaje && (
             <div style={{marginTop:'10px',color:mensaje.includes('exitosamente')?'#059669':'#b91c1c',fontWeight:500}}>{mensaje}</div>
+          )}
+          {!scoringResult && (
+            <button
+              type="button"
+              onClick={handleCompleteScoring}
+              style={{marginTop:'12px',background:'#001763',color:'#fff',border:'none',borderRadius:'8px',padding:'0.85rem 1.1rem',fontWeight:700,cursor:'pointer'}}
+            >
+              Rellenar scoring si quiere postular
+            </button>
           )}
         </div>
       )}

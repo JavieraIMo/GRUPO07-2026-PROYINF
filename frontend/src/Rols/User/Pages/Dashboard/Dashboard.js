@@ -192,72 +192,82 @@ function Dashboard({ user }) {
         const nombre = user?.nombre || user?.firstName || 'Usuario';
         return nombre.split(' ')[0];
       })()}!</h1>
-      <div className="dashboard-actions">
-        {/* <button onClick={() => navigate('/seleccionar-tipo-prestamo')}>Simular Préstamo Básico</button> */}
-        <button onClick={() => navigate('/simulador-avanzado')}>Simulación Avanzada + Scoring</button>
-        <button onClick={() => navigate('/historial')}>Ver Historial</button>
-        <button
-          onClick={() => {
-            if (consentGiven) {
-              navigate('/postulacion');
-            } else {
-              setShowConsent(true);
-            }
-          }}
-        >
-          Postular a Préstamo
-        </button>
-        <button onClick={() => navigate('/editar-perfil')}>Editar Perfil</button>
-      </div>
-      <div className="dashboard-summary">
-        <div className="dashboard-summary-header">
-          <div>
-            <p className="dashboard-summary-kicker">Vista rápida</p>
-            <h2>Resumen</h2>
+      <div className="dashboard-main-grid">
+        <aside className="dashboard-actions-panel">
+          <div className="dashboard-actions-header">
+            <p className="dashboard-actions-kicker">Accesos directos</p>
+            <h2>¿Qué quieres hacer hoy?</h2>
+            <p className="dashboard-actions-description">Elige una acción para continuar con tu simulación, revisar tu historial de simulaciones o avanzar con una solicitud.</p>
           </div>
-          <button className="dashboard-summary-link" onClick={() => navigate('/historial')}>
-            Ver historial completo
-          </button>
-        </div>
-        <div className="summary-highlight-card">
-          <div className="summary-highlight-copy">
-            <span className="summary-highlight-label">Última simulación</span>
-            <h3>{loadingResumen ? 'Cargando resumen...' : tipoUltimaSimulacion}</h3>
-            <p className="summary-highlight-amount">{loadingResumen ? 'Procesando datos...' : montoUltimaSimulacion}</p>
-            <p className="summary-highlight-description">{loadingResumen ? 'Obteniendo información reciente.' : detalleUltimaSimulacion}</p>
+          <div className="dashboard-actions">
+            {/* <button onClick={() => navigate('/seleccionar-tipo-prestamo')}>Simular Préstamo Básico</button> */}
+            <button onClick={() => navigate('/simulador-avanzado')}>Simulador</button>
+            <button onClick={() => navigate('/historial-simulaciones')}>Ver Historial Simulaciones</button>
+            <button onClick={() => navigate('/historial-postulaciones')}>Ver Historial Postulaciones</button>
+            <button
+              onClick={() => {
+                if (consentGiven) {
+                  navigate('/postulacion');
+                } else {
+                  setShowConsent(true);
+                }
+              }}
+            >
+              Postular a Préstamo
+            </button>
+            <button onClick={() => navigate('/editar-perfil')}>Editar Perfil</button>
           </div>
-          <div className="summary-highlight-meta">
-            <span className="summary-meta-label">Fecha</span>
-            <strong>{loadingResumen ? '...' : fechaUltimaSimulacion}</strong>
+        </aside>
+        <div className="dashboard-summary">
+          <div className="dashboard-summary-header">
+            <div>
+              <p className="dashboard-summary-kicker">Vista rápida</p>
+              <h2>Resumen</h2>
+            </div>
+            <button className="dashboard-summary-link" onClick={() => navigate('/historial-simulaciones')}>
+              Ver historial de simulaciones
+            </button>
           </div>
+          <div className="summary-highlight-card">
+            <div className="summary-highlight-copy">
+              <span className="summary-highlight-label">Última simulación</span>
+              <h3>{loadingResumen ? 'Cargando resumen...' : tipoUltimaSimulacion}</h3>
+              <p className="summary-highlight-amount">{loadingResumen ? 'Procesando datos...' : montoUltimaSimulacion}</p>
+              <p className="summary-highlight-description">{loadingResumen ? 'Obteniendo información reciente.' : detalleUltimaSimulacion}</p>
+            </div>
+            <div className="summary-highlight-meta">
+              <span className="summary-meta-label">Fecha</span>
+              <strong>{loadingResumen ? '...' : fechaUltimaSimulacion}</strong>
+            </div>
+          </div>
+          <div className="summary-metrics-grid">
+            <article className="summary-metric-card">
+              <span className="summary-label">Estado de resultado</span>
+              <strong className="summary-metric-value">
+                {loadingResumen ? 'Cargando...' : (ultimaSimulacion ? estadoResultado : 'Sin resultados todavía')}
+              </strong>
+              <span className={`summary-status-badge summary-status-${resultStatusVariant}`}>
+                {loadingResumen ? 'En proceso' : 'Resultado actual'}
+              </span>
+            </article>
+            <article className="summary-metric-card">
+              <span className="summary-label">Estado de postulación</span>
+              <strong className="summary-metric-value">{estadoPostulacion}</strong>
+              <span className={`summary-status-badge summary-status-${postulacionVariant}`}>
+                {ultimaSimulacion?.estado_postulacion ? 'Solicitud enviada' : 'Sin solicitud activa'}
+              </span>
+              {shouldShowApplyButton && (
+                <button
+                  className="summary-action-button"
+                  onClick={() => handleApplicationRoute(ultimaSimulacion)}
+                >
+                  {applyButtonLabel}
+                </button>
+              )}
+            </article>
+          </div>
+          {summaryError && <p className="dashboard-summary-error">{summaryError}</p>}
         </div>
-        <div className="summary-metrics-grid">
-          <article className="summary-metric-card">
-            <span className="summary-label">Estado de resultado</span>
-            <strong className="summary-metric-value">
-              {loadingResumen ? 'Cargando...' : (ultimaSimulacion ? estadoResultado : 'Sin resultados todavía')}
-            </strong>
-            <span className={`summary-status-badge summary-status-${resultStatusVariant}`}>
-              {loadingResumen ? 'En proceso' : 'Resultado actual'}
-            </span>
-          </article>
-          <article className="summary-metric-card">
-            <span className="summary-label">Estado de postulación</span>
-            <strong className="summary-metric-value">{estadoPostulacion}</strong>
-            <span className={`summary-status-badge summary-status-${postulacionVariant}`}>
-              {ultimaSimulacion?.estado_postulacion ? 'Solicitud enviada' : 'Sin solicitud activa'}
-            </span>
-            {shouldShowApplyButton && (
-              <button
-                className="summary-action-button"
-                onClick={() => handleApplicationRoute(ultimaSimulacion)}
-              >
-                {applyButtonLabel}
-              </button>
-            )}
-          </article>
-        </div>
-        {summaryError && <p className="dashboard-summary-error">{summaryError}</p>}
       </div>
       {showConsent && (
         <div className="modal-overlay" onClick={() => setShowConsent(false)}>
