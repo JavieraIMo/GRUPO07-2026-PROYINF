@@ -23,7 +23,7 @@ exports.obtenerHistorialSimulaciones = async (req, res) => {
     const cliente_id = req.user.id;
     console.log('[ALARA][Backend] Consultando historial para cliente_id:', cliente_id);
     const result = await db.query(
-      `SELECT id, monto_simulado, plazo_simulado, tasa_aplicada, cuota_calculada, tipo_prestamo, moneda_id, datos_adicionales, fecha_simulacion, scoring_detalle
+      `SELECT id, monto_simulado, plazo_simulado, tasa_aplicada, cuota_calculada, tipo_prestamo, moneda_id, datos_adicionales, fecha_simulacion, scoring_detalle, estado_postulacion
        FROM simulaciones WHERE cliente_id = $1 ORDER BY fecha_simulacion DESC`,
       [cliente_id]
     );
@@ -46,12 +46,13 @@ exports.guardarSimulacion = async (req, res) => {
     console.log('[ALARA][Backend] Usuario autenticado:', cliente_id);
     const tabla12 = Array.isArray(tabla) ? tabla.slice(0, 12) : [];
     // Ya no se elimina la simulación previa: se permite guardar múltiples simulaciones aunque sean iguales en valores pero distinto scoring
-    await db.query(
-      `INSERT INTO simulaciones (cliente_id, monto_simulado, plazo_simulado, tasa_aplicada, cuota_calculada, tipo_prestamo, moneda_id, datos_adicionales, scoring_detalle)
-       VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8)`,
+    const insertResult = await db.query(
+      `INSERT INTO simulaciones (cliente_id, monto_simulado, plazo_simulado, tasa_aplicada, cuota_calculada, tipo_prestamo, moneda_id, datos_adicionales, scoring_detalle, estado_postulacion)
+       VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8, FALSE)
+       RETURNING id`,
       [cliente_id, monto, plazo, tasa, cuota, tipo, JSON.stringify(tabla12), scoring_detalle ? JSON.stringify(scoring_detalle) : null]
     );
-    res.status(201).json({ ok: true, mensaje: 'Simulación guardada correctamente' });
+    res.status(201).json({ ok: true, mensaje: 'Simulación guardada correctamente', simulacion: insertResult.rows?.[0] || null });
   } catch (error) {
     console.error('[ALARA][Backend] Error al guardar simulación:', error);
     res.status(500).json({ ok: false, error: 'Error al guardar simulación' });

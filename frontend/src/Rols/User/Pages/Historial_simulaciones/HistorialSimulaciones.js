@@ -1,11 +1,38 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ModalDetalleSimulacion from './ModalDetalleSimulacion';
 
 function formatCLP(value) {
   return value.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
 }
 
+function parseScoringDetail(scoringDetalle) {
+  if (!scoringDetalle) {
+    return null;
+  }
+
+  if (typeof scoringDetalle === 'string') {
+    try {
+      return JSON.parse(scoringDetalle);
+    } catch {
+      return null;
+    }
+  }
+
+  return scoringDetalle;
+}
+
+function buildSimulationDraft(simulacion) {
+  return {
+    id: simulacion.id,
+    tipo: simulacion.tipo_prestamo,
+    monto: Number(simulacion.monto_simulado),
+    plazo: Number(simulacion.plazo_simulado),
+  };
+}
+
 const HistorialSimulaciones = ({ user }) => {
+  const navigate = useNavigate();
   const [detalleSim, setDetalleSim] = useState(null);
   const [simulaciones, setSimulaciones] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +42,28 @@ const HistorialSimulaciones = ({ user }) => {
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('');
   const PAGE_SIZE = 10;
+
+  const handleGoToApplication = (simulacion) => {
+    const scoringInfo = parseScoringDetail(simulacion.scoring_detalle);
+    const scoringStatus = scoringInfo?.estado ?? scoringInfo?.categoria;
+
+    if (!simulacion.estado_postulacion && scoringStatus === 'aprobado') {
+      navigate('/postulacion', {
+        state: {
+          simulacionId: simulacion.id,
+          simulacion: buildSimulationDraft(simulacion),
+        },
+      });
+      return;
+    }
+
+    navigate('/simulador-avanzado', {
+      state: {
+        startScoringFlow: true,
+        simulationDraft: buildSimulationDraft(simulacion),
+      },
+    });
+  };
 
   const handleDeleteSimulacion = async (id) => {
     if (!user || !user.token) return;
@@ -82,7 +131,7 @@ const HistorialSimulaciones = ({ user }) => {
   const simulacionesPagina = simulacionesFiltradas.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
 
   return (
-    <div className="advanced-simulator">
+    <div className="advanced-simulator historial-simulaciones">
       <h2>Historial de Simulaciones</h2>
       <div style={{display:'flex',gap:'1rem',margin:'1rem 0',flexWrap:'wrap'}}>
         <div>
@@ -137,8 +186,18 @@ const HistorialSimulaciones = ({ user }) => {
                 <td>{sim.plazo_simulado} meses</td>
                 <td>{(sim.tasa_aplicada * 100).toFixed(2)}%</td>
                 <td>{formatCLP(Number(sim.cuota_calculada))}</td>
-                <td>
-                  <button onClick={() => setDetalleSim(sim)} style={{background:'#2563eb',color:'#fff',border:'none',borderRadius:'6px',padding:'0.3rem 0.7rem',fontWeight:500,cursor:'pointer'}}>Ver detalle</button>
+                <td style={{textAlign:'left'}}>
+                  <div style={{display:'flex',gap:'0.5rem',justifyContent:'flex-start',flexWrap:'wrap'}}>
+                    <button onClick={() => setDetalleSim(sim)} style={{background:'#2563eb',color:'#fff',border:'none',borderRadius:'6px',padding:'0.3rem 0.7rem',fontWeight:500,cursor:'pointer'}}>Ver detalle</button>
+                    {!sim.estado_postulacion && (
+                      <button
+                        onClick={() => handleGoToApplication(sim)}
+                        style={{background:'#001763',color:'#fff',border:'none',borderRadius:'6px',padding:'0.3rem 0.7rem',fontWeight:600,cursor:'pointer'}}
+                      >
+                        {parseScoringDetail(sim.scoring_detalle)?.estado === 'aprobado' ? 'Ir a postular' : 'Completar scoring'}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -11,6 +11,25 @@
   align-items: center;
   border: 2px solid var(--color-border);
 }
+.historial-simulaciones {
+  max-width: 1180px;
+  width: calc(100% - 48px);
+  align-items: stretch;
+}
+
+.historial-simulaciones h2 {
+  width: 100%;
+  text-align: left;
+}
+
+.historial-simulaciones table {
+  table-layout: auto;
+}
+
+.historial-simulaciones th,
+.historial-simulaciones td {
+  white-space: nowrap;
+}
 .advanced-simulator h2 {
   color: var(--color-primary);
   margin-bottom: 22px;
@@ -156,6 +175,16 @@
   font-weight: 700;
 }
 @media (max-width: 640px) {
+  .historial-simulaciones {
+    width: calc(100% - 24px);
+    padding: 24px 16px;
+  }
+
+  .historial-simulaciones th,
+  .historial-simulaciones td {
+    white-space: normal;
+  }
+
   .scoring-toggle-control {
     margin-top: 2px;
   }

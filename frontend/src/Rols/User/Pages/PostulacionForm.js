@@ -13,17 +13,21 @@ const inputStyle = {
   transition: 'border 0.2s'
 };
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import ConsentimientoAvanzado from './ConsentimientoAvanzado';
 
 function PostulacionForm({ user }) {
+  const location = useLocation();
+  const simulationState = location.state?.simulacion;
+  const simulationId = location.state?.simulacionId ?? simulationState?.id ?? null;
   const [consentOk, setConsentOk] = useState(false);
   const [autoCompletar, setAutoCompletar] = useState(true);
   const [form, setForm] = useState({
     nombre: user?.nombre || '',
     rut: user?.rut || '',
     email: user?.email || '',
-    monto: '',
-    plazo: '',
+    monto: simulationState?.monto ? String(simulationState.monto) : '',
+    plazo: simulationState?.plazo ? String(simulationState.plazo) : '',
     situacionLaboral: '',
     tipoTrabajo: '',
     empresa: '',
@@ -58,7 +62,7 @@ function PostulacionForm({ user }) {
           'Content-Type': 'application/json',
           ...(user?.token ? { 'Authorization': `Bearer ${user.token}` } : {})
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify({ ...form, simulacionId: simulationId })
       });
       const data = await res.json();
       if (data.ok) {

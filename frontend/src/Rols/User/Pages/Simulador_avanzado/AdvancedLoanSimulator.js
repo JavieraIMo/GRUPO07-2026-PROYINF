@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import DatosScoringForm from './DatosScoringForm';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './AdvancedLoanSimulator.css';
 
 const LOAN_TYPES = [
@@ -50,6 +50,7 @@ function calculateAmortization(monto, plazo, tasa) {
 }
 
 const AdvancedLoanSimulator = ({ user }) => {
+  const location = useLocation();
   const [plazoManual, setPlazoManual] = useState('');
   const [usarPlazoManual, setUsarPlazoManual] = useState(false);
   const [plazoError, setPlazoError] = useState('');
@@ -192,6 +193,44 @@ const AdvancedLoanSimulator = ({ user }) => {
 
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  const [savedSimulationId, setSavedSimulationId] = useState(null);
+
+  useEffect(() => {
+    const draft = location.state?.simulationDraft;
+    const shouldStartScoring = Boolean(location.state?.startScoringFlow);
+
+    if (draft) {
+      const nextAmount = Number(draft.monto);
+      const nextTerm = Number(draft.plazo);
+
+      if (draft.tipo) {
+        setTipo(String(draft.tipo).toLowerCase());
+      }
+
+      if (Number.isFinite(nextAmount)) {
+        setMonto(nextAmount);
+      }
+
+      if (Number.isFinite(nextTerm)) {
+        if (COMMON_TERMS.includes(nextTerm)) {
+          setUsarPlazoManual(false);
+          setPlazo(nextTerm);
+          setPlazoManual('');
+        } else {
+          setUsarPlazoManual(true);
+          setPlazoManual(String(nextTerm));
+        }
+      }
+    }
+
+    if (shouldStartScoring) {
+      setWithScoring(true);
+      setShowScoringForm(true);
+      setScoringResult(null);
+      setScoringError('');
+      setResultados(null);
+    }
+  }, [location.state]);
 
   const handleGuardarSimulacion = async (simData) => {
     // Recibe los datos como argumento para guardado automático
@@ -221,11 +260,14 @@ const AdvancedLoanSimulator = ({ user }) => {
       console.log('[ALARA][Frontend] Respuesta backend:', data);
       if (response.ok && data.ok) {
         setMensaje('Simulación guardada exitosamente.');
+        setSavedSimulationId(data.simulacion?.id || null);
       } else {
         setMensaje('Error al guardar la simulación.');
+        setSavedSimulationId(null);
       }
     } catch (error) {
       setMensaje('Error de conexión al guardar.');
+      setSavedSimulationId(null);
       console.error('[ALARA][Frontend] Error al guardar simulación:', error);
     } finally {
       setGuardando(false);
@@ -367,6 +409,26 @@ const AdvancedLoanSimulator = ({ user }) => {
                 <span style={{color:'#b91c1c'}}>Rechazado. No cumples con el mínimo requerido para este monto.</span>
               )}
             </div>
+            {scoringResult.estado === 'aprobado' && (
+              <button
+                type="button"
+                onClick={() => navigate('/postulacion', {
+                  state: {
+                    simulacionId: savedSimulationId,
+                    simulacion: {
+                      id: savedSimulationId,
+                      tipo,
+                      monto,
+                      plazo: resultados?.plazoNum || (usarPlazoManual ? Number(plazoManual) : Number(plazo)),
+                    },
+                  },
+                })}
+                disabled={!savedSimulationId}
+                style={{marginTop:'0.8rem',background:!savedSimulationId?'#94a3b8':'#001763',color:'#fff',border:'none',borderRadius:'8px',padding:'0.85rem 1.1rem',fontWeight:700,cursor:!savedSimulationId?'not-allowed':'pointer'}}
+              >
+                Continuar con la solicitud
+              </button>
+            )}
           </div>
           {/* Resumen de datos ingresados */}
           <div style={{flex:'1 1 260px',background:'#fff',borderRadius:10,padding:'1rem',boxShadow:'0 2px 8px #0001',minWidth:220}}>

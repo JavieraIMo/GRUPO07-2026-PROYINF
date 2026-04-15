@@ -5,6 +5,8 @@ exports.registrarSolicitud = async (req, res) => {
   try {
     const cliente_id = req.user.id;
     const datos = req.body;
+    const simulacionId = datos.simulacionId ? Number(datos.simulacionId) : null;
+    await db.query('BEGIN');
     // Guardar todos los datos relevantes de la solicitud
     await db.query(
       `INSERT INTO solicitudes (
@@ -35,8 +37,31 @@ exports.registrarSolicitud = async (req, res) => {
         datos.cuentaDeposito
       ]
     );
+    if (simulacionId) {
+      await db.query(
+        `UPDATE simulaciones
+         SET estado_postulacion = TRUE
+         WHERE id = $1 AND cliente_id = $2`,
+        [simulacionId, cliente_id]
+      );
+    } else {
+      await db.query(
+        `UPDATE simulaciones
+         SET estado_postulacion = TRUE
+         WHERE id = (
+           SELECT id
+           FROM simulaciones
+           WHERE cliente_id = $1
+           ORDER BY fecha_simulacion DESC
+           LIMIT 1
+         )`,
+        [cliente_id]
+      );
+    }
+    await db.query('COMMIT');
     res.json({ ok: true, mensaje: 'Solicitud registrada correctamente' });
   } catch (error) {
+    await db.query('ROLLBACK');
     console.error('[ALARA][Backend] Error al registrar solicitud:', error);
     res.status(500).json({ ok: false, error: 'Error al registrar solicitud' });
   }

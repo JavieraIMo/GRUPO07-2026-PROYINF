@@ -124,6 +124,7 @@ CREATE TABLE simulaciones (
     moneda_id INTEGER REFERENCES monedas(id) DEFAULT 1,
     datos_adicionales JSONB,
     scoring_detalle JSONB,
+    estado_postulacion BOOLEAN NOT NULL DEFAULT FALSE,
     fecha_simulacion TIMESTAMPTZ DEFAULT NOW(),
     origen VARCHAR(50) DEFAULT 'WEB', -- WEB, MOBILE, API
     
