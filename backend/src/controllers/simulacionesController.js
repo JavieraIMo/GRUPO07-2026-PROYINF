@@ -41,16 +41,39 @@ const db = require('../../db');
 exports.guardarSimulacion = async (req, res) => {
   try {
     console.log('[ALARA][Backend] Recibido POST /api/simulaciones:', req.body);
-    const { tipo, monto, plazo, tasa, cuota, tabla, scoring_detalle } = req.body;
+    const { simulacionId, tipo, monto, plazo, tasa, cuota, tabla, scoring_detalle } = req.body;
     const cliente_id = req.user ? req.user.id : null;
     console.log('[ALARA][Backend] Usuario autenticado:', cliente_id);
     const tabla12 = Array.isArray(tabla) ? tabla.slice(0, 12) : [];
-    // Ya no se elimina la simulación previa: se permite guardar múltiples simulaciones aunque sean iguales en valores pero distinto scoring
+    const scoringDetalle = scoring_detalle ? JSON.stringify(scoring_detalle) : null;
+
+    if (simulacionId) {
+      const updateResult = await db.query(
+        `UPDATE simulaciones
+         SET monto_simulado = $1,
+             plazo_simulado = $2,
+             tasa_aplicada = $3,
+             cuota_calculada = $4,
+             tipo_prestamo = $5,
+             moneda_id = 1,
+             datos_adicionales = $6,
+             scoring_detalle = $7,
+             fecha_simulacion = NOW()
+         WHERE id = $8 AND cliente_id = $9
+         RETURNING id`,
+        [monto, plazo, tasa, cuota, tipo, JSON.stringify(tabla12), scoringDetalle, simulacionId, cliente_id]
+      );
+
+      if (updateResult.rowCount > 0) {
+        return res.json({ ok: true, mensaje: 'Simulación actualizada correctamente', simulacion: updateResult.rows[0] });
+      }
+    }
+
     const insertResult = await db.query(
       `INSERT INTO simulaciones (cliente_id, monto_simulado, plazo_simulado, tasa_aplicada, cuota_calculada, tipo_prestamo, moneda_id, datos_adicionales, scoring_detalle, estado_postulacion)
        VALUES ($1, $2, $3, $4, $5, $6, 1, $7, $8, FALSE)
        RETURNING id`,
-      [cliente_id, monto, plazo, tasa, cuota, tipo, JSON.stringify(tabla12), scoring_detalle ? JSON.stringify(scoring_detalle) : null]
+      [cliente_id, monto, plazo, tasa, cuota, tipo, JSON.stringify(tabla12), scoringDetalle]
     );
     res.status(201).json({ ok: true, mensaje: 'Simulación guardada correctamente', simulacion: insertResult.rows?.[0] || null });
   } catch (error) {

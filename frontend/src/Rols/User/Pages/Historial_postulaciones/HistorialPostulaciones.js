@@ -102,6 +102,42 @@ function getStatusStyles(status) {
   return { background: '#dbeafe', color: '#1d4ed8' };
 }
 
+function getStatusLabel(status) {
+  const normalized = (status || 'PENDIENTE').toUpperCase();
+
+  if (normalized === 'EN_REVISION') {
+    return 'En evaluación';
+  }
+
+  if (normalized === 'APROBADO' || normalized === 'DESEMBOLSADO') {
+    return 'Aprobada';
+  }
+
+  if (normalized === 'RECHAZADO' || normalized === 'VENCIDO') {
+    return 'Rechazada';
+  }
+
+  return 'Recibida';
+}
+
+function getStatusDescription(solicitud) {
+  const normalized = (solicitud?.estado_codigo || 'PENDIENTE').toUpperCase();
+
+  if (normalized === 'EN_REVISION') {
+    return 'Tu postulación está siendo evaluada por el equipo.';
+  }
+
+  if (normalized === 'APROBADO' || normalized === 'DESEMBOLSADO') {
+    return 'Tu postulación fue aprobada.';
+  }
+
+  if (normalized === 'RECHAZADO' || normalized === 'VENCIDO') {
+    return 'Tu postulación fue rechazada.';
+  }
+
+  return 'Tu postulación fue recibida y está pendiente de revisión.';
+}
+
 function DetailRow({ label, value }) {
   return (
     <div>
@@ -138,7 +174,7 @@ function ModalDetallePostulacion({ solicitud, onClose }) {
               <p style={{ margin: 0, color: '#475569', lineHeight: 1.6 }}>Revisa la información principal de la solicitud y los datos ingresados por el usuario al momento de postular.</p>
             </div>
             <span style={{ display: 'inline-flex', alignSelf: 'flex-start', padding: '0.45rem 0.85rem', borderRadius: '999px', fontWeight: 700, fontSize: '0.84rem', ...statusStyles }}>
-              {(solicitud.estado_codigo || 'PENDIENTE').replace('_', ' ')}
+              {getStatusLabel(solicitud.estado_codigo)}
             </span>
           </div>
 
@@ -155,7 +191,7 @@ function ModalDetallePostulacion({ solicitud, onClose }) {
 
           <div style={{ marginTop: '1.2rem', background: '#f8fbff', borderRadius: '14px', padding: '1rem 1.1rem', border: '1px solid #e5eefc' }}>
             <strong style={{ display: 'block', color: '#001763', marginBottom: '0.3rem' }}>Seguimiento</strong>
-            <span style={{ color: '#475569', lineHeight: 1.6 }}>{solicitud.estado_descripcion || 'Solicitud pendiente de revisión'}</span>
+            <span style={{ color: '#475569', lineHeight: 1.6 }}>{getStatusDescription(solicitud)}</span>
           </div>
 
           <div style={{ marginTop: '1.5rem' }}>
@@ -284,7 +320,7 @@ function HistorialPostulaciones({ user }) {
           <strong style={{ display: 'block', marginTop: '0.3rem', color: '#001763', fontSize: '1.8rem' }}>{solicitudes.length}</strong>
         </div>
         <div style={{ background: '#f8fbff', border: '1px solid #dbe7ff', borderRadius: '16px', padding: '1rem 1.1rem' }}>
-          <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pendientes o revisión</span>
+          <span style={{ display: 'block', color: '#64748b', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Recibidas o en evaluación</span>
           <strong style={{ display: 'block', marginTop: '0.3rem', color: '#001763', fontSize: '1.8rem' }}>
             {solicitudes.filter((solicitud) => ['PENDIENTE', 'EN_REVISION'].includes((solicitud.estado_codigo || '').toUpperCase())).length}
           </strong>
@@ -334,7 +370,7 @@ function HistorialPostulaciones({ user }) {
                     <span style={{ display: 'block', marginTop: '0.3rem', color: '#475569' }}>{solicitud.numero_solicitud}</span>
                   </div>
                   <span style={{ display: 'inline-flex', padding: '0.4rem 0.8rem', borderRadius: '999px', fontWeight: 700, fontSize: '0.82rem', ...statusStyles }}>
-                    {(solicitud.estado_codigo || 'PENDIENTE').replace('_', ' ')}
+                    {getStatusLabel(solicitud.estado_codigo)}
                   </span>
                 </div>
 
@@ -359,7 +395,7 @@ function HistorialPostulaciones({ user }) {
 
                 <div style={{ marginTop: '1rem', background: '#f8fbff', borderRadius: '12px', padding: '0.9rem 1rem', border: '1px solid #e5eefc' }}>
                   <strong style={{ display: 'block', color: '#001763', marginBottom: '0.2rem' }}>Seguimiento</strong>
-                  <span style={{ color: '#475569', lineHeight: 1.6 }}>{solicitud.estado_descripcion || 'Solicitud pendiente de revisión'}</span>
+                  <span style={{ color: '#475569', lineHeight: 1.6 }}>{getStatusDescription(solicitud)}</span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>

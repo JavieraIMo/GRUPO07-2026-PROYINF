@@ -201,6 +201,7 @@ const AdvancedLoanSimulator = ({ user }) => {
     const shouldStartScoring = Boolean(location.state?.startScoringFlow);
 
     if (draft) {
+      setSavedSimulationId(Number.isFinite(Number(draft.id)) ? Number(draft.id) : null);
       const nextAmount = Number(draft.monto);
       const nextTerm = Number(draft.plazo);
 
@@ -222,6 +223,8 @@ const AdvancedLoanSimulator = ({ user }) => {
           setPlazoManual(String(nextTerm));
         }
       }
+    } else {
+      setSavedSimulationId(null);
     }
 
     if (shouldStartScoring) {
@@ -278,6 +281,7 @@ const AdvancedLoanSimulator = ({ user }) => {
     setGuardando(true);
     setMensaje(null);
     const payload = {
+      ...(savedSimulationId ? { simulacionId: savedSimulationId } : {}),
       tipo: simData.tipo,
       monto: simData.monto,
       plazo: simData.plazo,
