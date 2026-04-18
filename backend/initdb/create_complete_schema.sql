@@ -281,6 +281,19 @@ CREATE INDEX idx_pagos_cuota ON pagos(cuota_id);
 CREATE INDEX idx_pagos_fecha ON pagos(fecha_pago);
 CREATE INDEX idx_pagos_metodo ON pagos(metodo_pago);
 
+CREATE TABLE notificaciones (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+    titulo VARCHAR(255) NOT NULL,
+    mensaje TEXT NOT NULL,
+    fecha TIMESTAMPTZ DEFAULT NOW(),
+    leida BOOLEAN DEFAULT FALSE,
+    tipo VARCHAR(50) DEFAULT 'general'
+);
+
+CREATE INDEX idx_notificaciones_usuario ON notificaciones(usuario_id);
+CREATE INDEX idx_notificaciones_fecha ON notificaciones(fecha);
+
 
 CREATE OR REPLACE FUNCTION update_fecha_actualizacion()
 RETURNS TRIGGER AS $$
@@ -314,6 +327,7 @@ COMMENT ON TABLE evaluaciones_riesgo IS 'Resultados de evaluación de riesgo cre
 COMMENT ON TABLE prestamos IS 'Préstamos aprobados y activos';
 COMMENT ON TABLE cuotas IS 'Cronograma de pagos de cada préstamo';
 COMMENT ON TABLE pagos IS 'Registro de pagos realizados por clientes';
+COMMENT ON TABLE notificaciones IS 'Notificaciones para usuarios del sistema';
 
 COMMENT ON COLUMN clientes.rut IS 'RUT chileno formato: XX.XXX.XXX-X';
 COMMENT ON COLUMN clientes.password_hash IS 'Contraseña encriptada con bcrypt';
@@ -335,6 +349,6 @@ WHERE schemaname = 'public'
 AND tablename IN (
     'clientes', 'estados', 'monedas', 'dependientes', 
     'simulaciones', 'solicitudes', 'evaluaciones_riesgo', 
-    'score_riesgo', 'prestamos', 'desembolsos', 'cuotas', 'pagos'
+    'score_riesgo', 'prestamos', 'desembolsos', 'cuotas', 'pagos', 'notificaciones'
 )
 ORDER BY tablename;

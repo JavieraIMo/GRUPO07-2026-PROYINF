@@ -6,59 +6,79 @@ function Notificaciones({ user }) {
   const navigate = useNavigate();
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const currentUserId = user?.id ?? user?.data?.user?.id ?? null;
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    ...(user?.token ? { Authorization: `Bearer ${user.token}` } : {}),
+  };
 
-  // === NUEVO: Función para crear notificación de bienvenida ===
   const crearNotificacionBienvenida = async () => {
+    if (!currentUserId) {
+      return false;
+    }
+
     try {
-      await fetch(`http://localhost:3100/api/notificaciones/bienvenida/${user.id}`, {
+      const response = await fetch(`http://localhost:3100/api/notificaciones/bienvenida/${currentUserId}`, {
         method: "POST",
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: authHeaders
       });
-      console.log("Notificación de bienvenida creada");
+
+      return response.ok;
     } catch (error) {
       console.error("Error creando notificación de bienvenida:", error);
+      return false;
     }
   };
 
-  // === NUEVO: Función para verificar si necesita bienvenida ===
   const necesitaBienvenida = (notificaciones) => {
-    return notificaciones.length === 0;
+    return Array.isArray(notificaciones) && notificaciones.length === 0;
   };
 
-  // === MODIFICAR: Este useEffect existente ===
   useEffect(() => {
+    if (!currentUserId || !user?.token) {
+      setNotificaciones([]);
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
-        const resp = await fetch(`http://localhost:3100/api/notificaciones/${user.id}`);
+        const resp = await fetch(`http://localhost:3100/api/notificaciones/${currentUserId}`, {
+          headers: authHeaders,
+        });
         const data = await resp.json();
+        const notificationsData = Array.isArray(data) ? data : [];
         
-        // === NUEVA LÓGICA: Crear bienvenida si no hay notificaciones ===
-        if (necesitaBienvenida(data)) {
+        if (necesitaBienvenida(notificationsData)) {
           await crearNotificacionBienvenida();
-          // Recargar notificaciones después de crear la bienvenida
-          const respNuevo = await fetch(`http://localhost:3100/api/notificaciones/${user.id}`);
+          const respNuevo = await fetch(`http://localhost:3100/api/notificaciones/${currentUserId}`, {
+            headers: authHeaders,
+          });
           const nuevasNotificaciones = await respNuevo.json();
-          setNotificaciones(nuevasNotificaciones);
+          setNotificaciones(Array.isArray(nuevasNotificaciones) ? nuevasNotificaciones : []);
         } else {
-          setNotificaciones(data);
+          setNotificaciones(notificationsData);
         }
         
       } catch (err) {
         console.error("Error cargando notificaciones:", err);
+        setNotificaciones([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user]);
+  }, [currentUserId, user?.token]);
 
-  // === EL RESTO DE TU CÓDIGO PERMANECE IGUAL ===
   const marcarComoLeidas = async () => {
-    await fetch(`http://localhost:3100/api/notificaciones/marcar_leidas/${user.id}`, {
-      method: "PUT"
+    if (!currentUserId) {
+      return;
+    }
+
+    await fetch(`http://localhost:3100/api/notificaciones/marcar_leidas/${currentUserId}`, {
+      method: "PUT",
+      headers: authHeaders,
     });
 
     setNotificaciones(prev =>

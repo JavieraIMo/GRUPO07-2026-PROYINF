@@ -12,8 +12,8 @@
   border: 2px solid var(--color-border);
 }
 .historial-simulaciones {
-  max-width: 1180px;
-  width: calc(100% - 48px);
+  max-width: 1360px;
+  width: calc(100% - 32px);
   align-items: stretch;
 }
 
@@ -196,12 +196,14 @@
   background: #ffffff;
   border: 1px solid #dbe7ff;
   border-radius: 18px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
 }
 
 .historial-table {
   width: 100%;
+  min-width: 1180px;
   border-collapse: collapse;
 }
 
@@ -240,6 +242,21 @@
   gap: 0.5rem;
   justify-content: flex-start;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.historial-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.38rem 0.75rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 700;
+  font-size: 0.8rem;
+  border: 1px solid #bfdbfe;
+  white-space: nowrap;
 }
 
 .historial-action-button {
@@ -471,6 +488,10 @@
   .historial-simulaciones {
     width: calc(100% - 24px);
     padding: 24px 16px;
+  }
+
+  .historial-table {
+    min-width: 0;
   }
 
   .historial-filtros-header,

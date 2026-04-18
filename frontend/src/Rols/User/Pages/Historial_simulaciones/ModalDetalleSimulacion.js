@@ -34,6 +34,93 @@ function getScoringStatusLabel(status) {
   return status;
 }
 
+function getBreakdownLabel(key) {
+  const labels = {
+    scoreDICOM: 'DICOM',
+    scorePension: 'Pensión alimenticia',
+    scoreIngresos: 'Ingresos',
+    scoreHistorial: 'Historial',
+    scoreAntiguedad: 'Antigüedad laboral',
+    scoreEndeudamiento: 'Endeudamiento',
+  };
+
+  return labels[key] || key;
+}
+
+function getBreakdownMaxScore(key) {
+  const maxScores = {
+    scoreDICOM: 30,
+    scorePension: 15,
+    scoreIngresos: 20,
+    scoreHistorial: 20,
+    scoreAntiguedad: 10,
+    scoreEndeudamiento: 5,
+  };
+
+  return maxScores[key] || 0;
+}
+
+function buildRecommendationForCategory(key, scoringInfo) {
+  const recommendationMap = {
+    scoreDICOM: scoringInfo?.dicom
+      ? 'Prioriza regularizar las obligaciones reportadas en DICOM y reunir respaldo de pago o repactación antes de volver a evaluar.'
+      : 'Mantén tu comportamiento financiero sin morosidades para conservar este factor en nivel alto.',
+    scorePension: scoringInfo?.pensionAlimenticia
+      ? 'Regulariza tu situación de pensión alimenticia y conserva comprobantes al día para una próxima evaluación.'
+      : 'Mantén este antecedente sin observaciones para no afectar futuras evaluaciones.',
+    scoreIngresos: 'Aumenta ingresos demostrables o reduce el monto solicitado para mejorar tu capacidad de pago frente al crédito pedido.',
+    scoreHistorial: 'Evita nuevos atrasos y acumula meses de pago puntual para mejorar tu historial crediticio.',
+    scoreAntiguedad: 'Postula con mayor continuidad laboral o presenta antecedentes que respalden estabilidad de ingresos.',
+    scoreEndeudamiento: 'Reduce tus cuotas vigentes o consolida deudas para bajar tu nivel de endeudamiento.',
+  };
+
+  return recommendationMap[key] || 'Refuerza este criterio antes de una nueva evaluación.';
+}
+
+function buildWeakPointRecommendations(scoringInfo) {
+  if (!scoringInfo?.breakdown) {
+    return [];
+  }
+
+  const rankedFactors = Object.entries(scoringInfo.breakdown)
+    .map(([key, value]) => {
+      const maxScore = getBreakdownMaxScore(key);
+      const numericValue = Number(value);
+      const normalizedScore = maxScore > 0 ? numericValue / maxScore : 1;
+
+      return {
+        key,
+        value: numericValue,
+        maxScore,
+        normalizedScore,
+      };
+    })
+    .filter((factor) => Number.isFinite(factor.value) && factor.maxScore > 0 && factor.value < factor.maxScore)
+    .sort((left, right) => {
+      if (left.normalizedScore !== right.normalizedScore) {
+        return left.normalizedScore - right.normalizedScore;
+      }
+
+      return left.value - right.value;
+    });
+
+  if (rankedFactors.length === 0) {
+    return [];
+  }
+
+  const weakestNormalizedScore = rankedFactors[0].normalizedScore;
+
+  return rankedFactors
+    .filter((factor) => factor.normalizedScore === weakestNormalizedScore)
+    .map((factor) => ({
+      key: factor.key,
+      label: getBreakdownLabel(factor.key),
+      score: factor.value,
+      maxScore: factor.maxScore,
+      recommendation: buildRecommendationForCategory(factor.key, scoringInfo),
+    }));
+}
+
 function parseTableRows(datosAdicionales) {
   if (Array.isArray(datosAdicionales)) {
     return datosAdicionales;
@@ -117,6 +204,44 @@ function parseScoringDetail(scoringDetalle) {
   return scoringDetalle;
 }
 
+const detailTableShellStyle = {
+  marginBottom: '1.2rem',
+  border: '1px solid #dbe4f0',
+  borderRadius: '14px',
+  overflow: 'hidden',
+  background: '#ffffff',
+  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.08)',
+};
+
+const detailTableStyle = {
+  width: '100%',
+  borderCollapse: 'separate',
+  borderSpacing: 0,
+  fontSize: '0.96rem',
+};
+
+const detailTableHeaderCellStyle = {
+  background: 'linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%)',
+  color: '#f8fafc',
+  textAlign: 'left',
+  padding: '0.9rem 1rem',
+  fontWeight: 700,
+  letterSpacing: '0.01em',
+  borderBottom: '1px solid #bfdbfe',
+};
+
+function getDetailTableRowStyle(index) {
+  return {
+    background: index % 2 === 0 ? '#f8fbff' : '#eef4ff',
+  };
+}
+
+const detailTableCellStyle = {
+  padding: '0.85rem 1rem',
+  color: '#1e293b',
+  borderBottom: '1px solid #dbe4f0',
+};
+
 const ModalDetalleSimulacion = ({ simulacion, numeroSimulacion, onClose, onDelete }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   if (!simulacion) return null;
@@ -128,6 +253,8 @@ const ModalDetalleSimulacion = ({ simulacion, numeroSimulacion, onClose, onDelet
   const scoringInfo = parseScoringDetail(simulacion.scoring_detalle);
   const scoringValue = scoringInfo?.scoring ?? scoringInfo?.score;
   const scoringStatus = scoringInfo?.estado ?? scoringInfo?.categoria;
+  const isRejectedScoring = scoringStatus === 'rechazado';
+  const weakPointRecommendations = buildWeakPointRecommendations(scoringInfo);
   const hasRealScoring = Boolean(
     scoringInfo && (
       scoringValue !== undefined
@@ -153,35 +280,37 @@ const ModalDetalleSimulacion = ({ simulacion, numeroSimulacion, onClose, onDelet
           <strong>Tipo:</strong> {simulacion.tipo_prestamo}<br/>
           <strong>Monto:</strong> {formatCLP(simulacion.monto_simulado)}<br/>
           <strong>Plazo:</strong> {simulacion.plazo_simulado ?? '-'} meses<br/>
-          <strong>Tasa:</strong> {formatPercent(simulacion.tasa_aplicada)}<br/>
-          <strong>Cuota:</strong> {formatCLP(simulacion.cuota_calculada)}<br/>
+          <strong>Tasa:</strong> {isRejectedScoring ? 'No aplica por rechazo de scoring' : formatPercent(simulacion.tasa_aplicada)}<br/>
+          <strong>Cuota:</strong> {isRejectedScoring ? 'No aplica por rechazo de scoring' : formatCLP(simulacion.cuota_calculada)}<br/>
           <strong>Fecha:</strong> {simulacion.fecha_simulacion ? new Date(simulacion.fecha_simulacion).toLocaleDateString('es-CL') : ''}<br/>
         </div>
-        {tablaAmortizacion.length > 0 && (
+        {tablaAmortizacion.length > 0 && !isRejectedScoring && (
           <>
             <h3 style={{marginBottom:'0.7rem'}}>Tabla de Amortización (12 meses)</h3>
-            <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'1.2rem'}}>
-              <thead>
-                <tr>
-                  <th>Mes</th>
-                  <th>Cuota</th>
-                  <th>Capital</th>
-                  <th>Interés</th>
-                  <th>Saldo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tablaAmortizacion.map((row, idx) => (
-                  <tr key={idx}>
-                    <td>{row.mes ?? '-'}</td>
-                    <td>{formatCLP(row.cuota)}</td>
-                    <td>{formatCLP(row.capital)}</td>
-                    <td>{formatCLP(row.interes)}</td>
-                    <td>{formatCLP(row.saldo)}</td>
+            <div style={detailTableShellStyle}>
+              <table style={detailTableStyle}>
+                <thead>
+                  <tr>
+                    <th style={detailTableHeaderCellStyle}>Mes</th>
+                    <th style={detailTableHeaderCellStyle}>Cuota</th>
+                    <th style={detailTableHeaderCellStyle}>Capital</th>
+                    <th style={detailTableHeaderCellStyle}>Interés</th>
+                    <th style={detailTableHeaderCellStyle}>Saldo</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tablaAmortizacion.map((row, idx) => (
+                    <tr key={idx} style={getDetailTableRowStyle(idx)}>
+                      <td style={detailTableCellStyle}>{row.mes ?? '-'}</td>
+                      <td style={detailTableCellStyle}>{formatCLP(row.cuota)}</td>
+                      <td style={detailTableCellStyle}>{formatCLP(row.capital)}</td>
+                      <td style={detailTableCellStyle}>{formatCLP(row.interes)}</td>
+                      <td style={detailTableCellStyle}>{formatCLP(row.saldo)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
 
@@ -192,17 +321,46 @@ const ModalDetalleSimulacion = ({ simulacion, numeroSimulacion, onClose, onDelet
             <ul style={{listStyle:'none',padding:0,fontSize:'1rem'}}>
               {scoringValue !== undefined && scoringValue !== null && <li><b>Puntaje:</b> {scoringValue} / 100</li>}
               {scoringStatus && <li><b>Estado:</b> {getScoringStatusLabel(scoringStatus)}</li>}
+              {scoringInfo.decision && <li><b>Resultado:</b> {scoringInfo.decision}</li>}
               {scoringInfo.dicom !== undefined && <li><b>DICOM:</b> {scoringInfo.dicom ? 'Sí' : 'No'}</li>}
               {scoringInfo.pensionAlimenticia !== undefined && <li><b>Pensión alimenticia:</b> {scoringInfo.pensionAlimenticia ? 'Sí' : 'No'}</li>}
               {scoringInfo.ingresos !== undefined && <li><b>Ingresos:</b> {formatCLP(scoringInfo.ingresos)}</li>}
               {scoringInfo.historial && <li><b>Historial:</b> {scoringInfo.historial}</li>}
               {scoringInfo.antiguedad !== undefined && <li><b>Antigüedad:</b> {scoringInfo.antiguedad} años</li>}
               {scoringInfo.endeudamiento !== undefined && <li><b>Endeudamiento:</b> {scoringInfo.endeudamiento}%</li>}
+              {Array.isArray(scoringInfo.motivos) && scoringInfo.motivos.length > 0 && (
+                <li style={{marginTop:'0.7rem'}}>
+                  <b>Por qué no fue preaprobado:</b>
+                  <ul style={{marginTop:'0.3rem',marginLeft:'1.2rem'}}>
+                    {scoringInfo.motivos.map((motivo, index) => <li key={`${motivo}-${index}`}>{motivo}</li>)}
+                  </ul>
+                </li>
+              )}
+              {Array.isArray(scoringInfo.recomendaciones) && scoringInfo.recomendaciones.length > 0 && (
+                <li style={{marginTop:'0.7rem'}}>
+                  <b>Recomendaciones:</b>
+                  <ul style={{marginTop:'0.3rem',marginLeft:'1.2rem'}}>
+                    {scoringInfo.recomendaciones.map((recomendacion, index) => <li key={`${recomendacion}-${index}`}>{recomendacion}</li>)}
+                  </ul>
+                </li>
+              )}
+              {weakPointRecommendations.length > 0 && (
+                <li style={{marginTop:'0.7rem'}}>
+                  <b>Recomendaciones según tu menor puntaje:</b>
+                  <ul style={{marginTop:'0.3rem',marginLeft:'1.2rem'}}>
+                    {weakPointRecommendations.map((item) => (
+                      <li key={item.key}>
+                        <b>{item.label}</b> ({item.score} / {item.maxScore}): {item.recommendation}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              )}
               {scoringInfo.breakdown && (
                 <li style={{marginTop:'0.7rem'}}>
                   <b>Detalle de puntaje:</b>
                   <ul style={{marginTop:'0.3rem',marginLeft:'1.2rem'}}>
-                    {Object.entries(scoringInfo.breakdown).map(([key, value]) => <li key={key}>{key}: {value}</li>)}
+                    {Object.entries(scoringInfo.breakdown).map(([key, value]) => <li key={key}>{getBreakdownLabel(key)}: {value}</li>)}
                   </ul>
                 </li>
               )}
@@ -211,7 +369,7 @@ const ModalDetalleSimulacion = ({ simulacion, numeroSimulacion, onClose, onDelet
         )}
         <button
           onClick={() => setShowConfirm(true)}
-          style={{background:'#b91c1c',color:'#fff',border:'none',borderRadius:'6px',padding:'0.7rem 1.2rem',fontWeight:700,fontSize:'1rem',cursor:'pointer',marginBottom:'0.5rem'}}
+          style={{background:'#b91c1c',color:'#fff',border:'none',borderRadius:'6px',padding:'0.7rem 1.2rem',fontWeight:700,fontSize:'1rem',cursor:'pointer',marginTop:'1.25rem',marginBottom:'0.5rem'}}
         >
           Borrar simulación
         </button>

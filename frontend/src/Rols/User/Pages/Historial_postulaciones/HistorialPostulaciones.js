@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 function parseApplicationDetails(documentosAdjuntos) {
   if (!documentosAdjuntos) {
@@ -148,6 +148,8 @@ function DetailRow({ label, value }) {
 }
 
 function ModalDetallePostulacion({ solicitud, onClose }) {
+  const navigate = useNavigate();
+
   if (!solicitud) {
     return null;
   }
@@ -194,6 +196,31 @@ function ModalDetallePostulacion({ solicitud, onClose }) {
             <span style={{ color: '#475569', lineHeight: 1.6 }}>{getStatusDescription(solicitud)}</span>
           </div>
 
+          {solicitud.simulacion_id && (
+            <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/historial-simulaciones', {
+                  state: {
+                    openSimulationDetail: true,
+                    targetSimulationId: solicitud.simulacion_id,
+                  },
+                })}
+                style={{
+                  background: '#001763',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.78rem 1rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Ver más detalles de la simulación
+              </button>
+            </div>
+          )}
+
           <div style={{ marginTop: '1.5rem' }}>
             <h3 style={{ color: '#001763', marginBottom: '0.9rem' }}>Datos del formulario</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -223,12 +250,14 @@ function ModalDetallePostulacion({ solicitud, onClose }) {
 }
 
 function HistorialPostulaciones({ user }) {
+  const location = useLocation();
   const navigate = useNavigate();
   const [solicitudes, setSolicitudes] = useState([]);
   const [numeroSimulacionPorId, setNumeroSimulacionPorId] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [detalleSolicitud, setDetalleSolicitud] = useState(null);
+  const [targetHandled, setTargetHandled] = useState(false);
 
   useEffect(() => {
     if (!user?.token) {
@@ -270,6 +299,27 @@ function HistorialPostulaciones({ user }) {
         setNumeroSimulacionPorId({});
       });
   }, [user]);
+
+  useEffect(() => {
+    if (targetHandled || loading || solicitudes.length === 0) {
+      return;
+    }
+
+    const targetSimulationId = Number(location.state?.targetSimulationId);
+    const shouldOpenDetail = Boolean(location.state?.openApplicationDetail);
+
+    if (!shouldOpenDetail || !Number.isFinite(targetSimulationId)) {
+      return;
+    }
+
+    const targetSolicitud = solicitudes.find((solicitud) => Number(solicitud.simulacion_id) === targetSimulationId);
+
+    if (targetSolicitud) {
+      setDetalleSolicitud(targetSolicitud);
+    }
+
+    setTargetHandled(true);
+  }, [loading, location.state, solicitudes, targetHandled]);
 
   if (!user) {
     return <div style={{ textAlign: 'center', marginTop: '2rem' }}>Debes iniciar sesión para ver tu historial de postulaciones.</div>;
@@ -352,20 +402,29 @@ function HistorialPostulaciones({ user }) {
           {solicitudes.map((solicitud) => {
             const statusStyles = getStatusStyles(solicitud.estado_codigo);
             const numeroSimulacionUsuario = solicitud.simulacion_id ? numeroSimulacionPorId[solicitud.simulacion_id] : null;
+            const isTargetSolicitud = Boolean(
+              location.state?.openApplicationDetail
+              && Number(location.state?.targetSimulationId) === Number(solicitud.simulacion_id)
+            );
 
             return (
               <article
                 key={solicitud.id}
                 style={{
-                  border: '1px solid #dbe7ff',
+                  border: isTargetSolicitud ? '2px solid #2563eb' : '1px solid #dbe7ff',
                   borderRadius: '16px',
                   padding: '1.25rem 1.3rem',
-                  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.05)',
-                  background: '#ffffff',
+                  boxShadow: isTargetSolicitud ? '0 18px 36px rgba(37, 99, 235, 0.14)' : '0 10px 24px rgba(15, 23, 42, 0.05)',
+                  background: isTargetSolicitud ? '#f8fbff' : '#ffffff',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                   <div>
+                    {isTargetSolicitud && (
+                      <span style={{ display: 'inline-flex', marginBottom: '0.45rem', padding: '0.3rem 0.7rem', borderRadius: '999px', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, fontSize: '0.76rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Seguimiento abierto desde simulaciones
+                      </span>
+                    )}
                     <strong style={{ display: 'block', color: '#001763', fontSize: '1.08rem' }}>{formatLoanType(solicitud.tipo_prestamo)}</strong>
                     <span style={{ display: 'block', marginTop: '0.3rem', color: '#475569' }}>{solicitud.numero_solicitud}</span>
                   </div>

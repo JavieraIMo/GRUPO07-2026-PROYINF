@@ -30,6 +30,14 @@ function getScoringStatusLabel(status) {
   return status;
 }
 
+function buildScoringActionSummary(scoringResult) {
+  if (!scoringResult) {
+    return null;
+  }
+
+  return scoringResult.decision || null;
+}
+
 function calculateAmortization(monto, plazo, tasa) {
   const cuota = (monto * (tasa / 12)) / (1 - Math.pow(1 + tasa / 12, -plazo));
   let saldo = monto;
@@ -148,25 +156,31 @@ const AdvancedLoanSimulator = ({ user }) => {
       if (data.ok) {
         setScoringResult(data);
 
-        let tasaAjustada = LOAN_TYPES.find(t => t.value === tipo)?.rate || 0.12;
-        let plazoNum = usarPlazoManual ? Number(plazoManual) : Number(plazo);
+        const tasaBase = LOAN_TYPES.find(t => t.value === tipo)?.rate || 0.12;
+        const plazoSolicitado = usarPlazoManual ? Number(plazoManual) : Number(plazo);
+        let tasaAjustada = tasaBase;
+        let plazoNum = plazoSolicitado;
+        let tabla = [];
+        let cuota = 0;
 
-        if (data.estado === 'aprobado') {
-          // tasa normal
-        } else if (data.estado === 'condicionado') {
-          tasaAjustada *= 1.2;      // +20% tasa
+        if (data.estado === 'condicionado') {
+          tasaAjustada *= 1.2;
           plazoNum = Math.min(plazoNum, 24);
-        } else {
-          // rechazado → no simula cuotas
-          setResultados(null);
-          return;
         }
 
-        const { cuota, tabla } = calculateAmortization(monto, plazoNum, tasaAjustada);
-        setResultados({ cuota, tabla, tasa: tasaAjustada, plazoNum });
+        if (data.estado !== 'rechazado') {
+          const amortization = calculateAmortization(monto, plazoNum, tasaAjustada);
+          cuota = amortization.cuota;
+          tabla = amortization.tabla;
+          setResultados({ cuota, tabla, tasa: tasaAjustada, plazoNum });
+        } else {
+          const referentialSimulation = calculateAmortization(monto, plazoSolicitado, tasaBase);
+          cuota = referentialSimulation.cuota;
+          setResultados(null);
+        }
+
         setShowScoringForm(false);
 
-        // Guardar simulación automáticamente en historial de simulaciones si user existe
         if (user) {
           const simData = {
             tipo,
@@ -177,9 +191,8 @@ const AdvancedLoanSimulator = ({ user }) => {
             tabla,
             scoring_detalle: data
           };
-          handleGuardarSimulacion(simData);
+          await handleGuardarSimulacion(simData);
         }
-
       } else {
         setScoringError(data.error || 'No se pudo calcular el scoring.');
       }
@@ -452,9 +465,34 @@ const AdvancedLoanSimulator = ({ user }) => {
                 <span style={{color:'#eab308'}}>Condicionado. Un ejecutivo revisará tu caso y podría requerir más antecedentes.</span>
               )}
               {scoringResult.estado === 'rechazado' && (
-                <span style={{color:'#b91c1c'}}>Rechazado. No cumples con el mínimo requerido para este monto.</span>
+                <span style={{color:'#b91c1c'}}>Rechazado. La simulación quedó guardada en tu historial, pero no puede avanzar a postulación porque no fue preaprobada.</span>
               )}
             </div>
+            {buildScoringActionSummary(scoringResult) && (
+              <div style={{margin:'0 0 1rem',padding:'0.85rem 1rem',borderRadius:10,background:'#fff',border:'1px solid #dbe4f0',color:'#334155',lineHeight:1.5}}>
+                {buildScoringActionSummary(scoringResult)}
+              </div>
+            )}
+            {Array.isArray(scoringResult.motivos) && scoringResult.motivos.length > 0 && (
+              <div style={{marginTop:'1rem',padding:'1rem',borderRadius:10,background:'#fff1f2',border:'1px solid #fecdd3'}}>
+                <h4 style={{margin:'0 0 0.65rem',color:'#9f1239'}}>Por qué no quedó preaprobado</h4>
+                <ul style={{margin:0,paddingLeft:'1.1rem',color:'#881337',lineHeight:1.5}}>
+                  {scoringResult.motivos.map((motivo, index) => (
+                    <li key={`${motivo}-${index}`}>{motivo}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {Array.isArray(scoringResult.recomendaciones) && scoringResult.recomendaciones.length > 0 && (
+              <div style={{marginTop:'1rem',padding:'1rem',borderRadius:10,background:'#eff6ff',border:'1px solid #bfdbfe'}}>
+                <h4 style={{margin:'0 0 0.65rem',color:'#1d4ed8'}}>Recomendaciones para mejorar</h4>
+                <ul style={{margin:0,paddingLeft:'1.1rem',color:'#1e3a8a',lineHeight:1.5}}>
+                  {scoringResult.recomendaciones.map((recomendacion, index) => (
+                    <li key={`${recomendacion}-${index}`}>{recomendacion}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {scoringResult.estado === 'aprobado' && (
               <button
                 type="button"
@@ -479,6 +517,9 @@ const AdvancedLoanSimulator = ({ user }) => {
             <h4 style={{marginTop:0,marginBottom:'0.7rem',color:'#001763'}}>Datos ingresados</h4>
             <ul style={{listStyle:'none',padding:0,margin:0,fontSize:'1rem'}}>
               <li><b>Resultado:</b> {getScoringStatusLabel(scoringResult.estado)}</li>
+              {scoringResult.umbrales && (
+                <li><b>Umbral para preaprobación:</b> {scoringResult.umbrales.minimoAprobado} puntos</li>
+              )}
               <li><b>DICOM:</b> {scoringResult.dicom !== undefined ? (scoringResult.dicom ? 'Sí' : 'No') : '-'}</li>
               <li><b>Pensión alimenticia:</b> {scoringResult.pensionAlimenticia !== undefined ? (scoringResult.pensionAlimenticia ? 'Sí' : 'No') : '-'}</li>
               <li><b>Ingresos:</b> {scoringResult.ingresos !== undefined ? scoringResult.ingresos.toLocaleString('es-CL') : '-'}</li>

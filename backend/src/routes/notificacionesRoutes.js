@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { authMiddleware } = require('../middlewares/authMiddleware');
 
 const { 
   getUserNotifications,
@@ -8,13 +9,29 @@ const {
   welcomeNotificationExists
 } = require('../utils/notificationUtils');
 
+function resolveUserId(req) {
+  const authenticatedUserId = req.user?.id;
+  const requestedUserId = req.params.userId ? Number(req.params.userId) : null;
+
+  if (Number.isFinite(authenticatedUserId)) {
+    return authenticatedUserId;
+  }
+
+  return Number.isFinite(requestedUserId) ? requestedUserId : null;
+}
+
 
 // =============================================
 // OBTENER NOTIFICACIONES DEL USUARIO
 // =============================================
-router.get('/:userId', async (req, res) => {
+router.get('/:userId', authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = resolveUserId(req);
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Usuario inválido' });
+    }
+
     const notificaciones = await getUserNotifications(userId);
     res.json(notificaciones);
 
@@ -31,9 +48,13 @@ router.get('/:userId', async (req, res) => {
 // =============================================
 // CREAR NOTIFICACIÓN DE BIENVENIDA
 // =============================================
-router.post('/bienvenida/:userId', async (req, res) => {
+router.post('/bienvenida/:userId', authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = resolveUserId(req);
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Usuario inválido' });
+    }
 
     // Verificar si ya existe
     const yaExiste = await welcomeNotificationExists(userId);
@@ -66,9 +87,14 @@ router.post('/bienvenida/:userId', async (req, res) => {
 // =============================================
 // MARCAR TODAS COMO LEÍDAS
 // =============================================
-router.put('/marcar_leidas/:userId', async (req, res) => {
+router.put('/marcar_leidas/:userId', authMiddleware, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = resolveUserId(req);
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Usuario inválido' });
+    }
+
     await markAllAsRead(userId);
 
     res.json({ 

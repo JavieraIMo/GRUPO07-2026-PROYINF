@@ -144,7 +144,11 @@ function Dashboard({ user }) {
   const latestScoringStatus = getScoringStatusValue(ultimaSimulacion);
   const canApplyDirectly = Boolean(ultimaSimulacion && !ultimaSimulacion.estado_postulacion && latestScoringStatus === 'aprobado');
   const shouldShowApplyButton = !loadingResumen && !ultimaSimulacion?.estado_postulacion;
-  const applyButtonLabel = canApplyDirectly ? 'Ir a postular' : 'Completar scoring para postular';
+  const applyButtonLabel = canApplyDirectly
+    ? 'Ir a postular'
+    : latestScoringStatus
+      ? 'Revisar scoring para postular'
+      : 'Completar scoring para postular';
   const tipoUltimaSimulacion = ultimaSimulacion ? formatLoanType(ultimaSimulacion.tipo_prestamo) : 'Sin simulaciones';
   const montoUltimaSimulacion = ultimaSimulacion ? formatCLP(ultimaSimulacion.monto_simulado) : '-';
   const fechaUltimaSimulacion = ultimaSimulacion?.fecha_simulacion

@@ -1,6 +1,99 @@
 // scoringController.js
 // Lógica de cálculo de scoring crediticio
 
+function getThresholdsForAmount(monto) {
+  if (monto <= 300000) {
+    return { aprobado: 55, condicionado: 45 };
+  }
+
+  if (monto <= 3000000) {
+    return { aprobado: 65, condicionado: 55 };
+  }
+
+  if (monto <= 10000000) {
+    return { aprobado: 75, condicionado: 65 };
+  }
+
+  return { aprobado: 85, condicionado: 75 };
+}
+
+function buildScoringFeedback({
+  breakdown,
+  dicom,
+  pensionAlimenticia,
+  ingresos,
+  historial,
+  antiguedad,
+  endeudamiento,
+  scoringFinal,
+  monto,
+  estado,
+  thresholds,
+}) {
+  const motivos = [];
+  const recomendaciones = [];
+
+  if (dicom) {
+    motivos.push('Mantienes registros en DICOM, lo que reduce al minimo el criterio de comportamiento financiero.');
+    recomendaciones.push('Regulariza o repacta las obligaciones informadas en DICOM antes de volver a evaluar tu solicitud.');
+  }
+
+  if (pensionAlimenticia) {
+    motivos.push('Registras deuda o retencion por pension alimenticia, lo que afecta negativamente la evaluacion de riesgo.');
+    recomendaciones.push('Regulariza la situacion de pension alimenticia y conserva respaldo del cumplimiento para una nueva evaluacion.');
+  }
+
+  if (breakdown.scoreIngresos < 15) {
+    motivos.push(`Tus ingresos declarados (${ingresos}) no alcanzan un tramo fuerte para el monto solicitado.`);
+    recomendaciones.push('Aumenta tus ingresos demostrables o reduce el monto solicitado para mejorar la relacion capacidad de pago/monto.');
+  }
+
+  if (historial === 'leve' || historial === 'atraso' || historial === 'malo') {
+    motivos.push('Tu historial crediticio reciente muestra atrasos o morosidades que disminuyen la evaluacion.');
+    recomendaciones.push('Mantiene pagos puntuales durante los proximos meses para mejorar tu historial antes de una nueva postulacion.');
+  }
+
+  if (breakdown.scoreAntiguedad < 7) {
+    motivos.push(`La antiguedad laboral declarada (${antiguedad} anos) aporta menor estabilidad a la evaluacion.`);
+    recomendaciones.push('Intenta postular con mayor continuidad laboral o adjuntando antecedentes que respalden estabilidad de ingresos.');
+  }
+
+  if (breakdown.scoreEndeudamiento < 4) {
+    motivos.push(`Tu nivel de endeudamiento actual (${endeudamiento}%) es alto para este analisis.`);
+    recomendaciones.push('Reduce carga financiera, consolida deudas o baja tus cuotas mensuales para mejorar tu perfil.');
+  }
+
+  const umbralObjetivo = estado === 'rechazado' ? thresholds.condicionado : thresholds.aprobado;
+  const diferencia = umbralObjetivo - scoringFinal;
+
+  if (diferencia > 0) {
+    motivos.push(`Tu puntaje total fue ${scoringFinal}, por debajo del minimo requerido de ${umbralObjetivo} para este monto.`);
+  }
+
+  if (motivos.length === 0) {
+    motivos.push('La evaluacion requiere reforzar antecedentes financieros para alcanzar una preaprobacion mas solida.');
+  }
+
+  if (recomendaciones.length === 0) {
+    recomendaciones.push('Vuelve a intentar con un monto menor o mejora tus antecedentes financieros antes de una nueva evaluacion.');
+  }
+
+  return {
+    decision: estado === 'aprobado'
+      ? 'La simulacion queda preaprobada y puede avanzar a postulacion.'
+      : estado === 'condicionado'
+        ? 'La simulacion requiere revision adicional antes de una postulacion formal.'
+        : 'La simulacion se guarda en historial, pero no puede avanzar a postulacion porque no fue preaprobada.',
+    motivos,
+    recomendaciones,
+    umbrales: {
+      monto,
+      minimoAprobado: thresholds.aprobado,
+      minimoCondicionado: thresholds.condicionado,
+    },
+  };
+}
+
 exports.calcularScoring = (req, res) => {
   try {
     const {
@@ -73,27 +166,26 @@ exports.calcularScoring = (req, res) => {
     // Score es la suma exacta de los valores de breakdown
     const scoringFinal = Object.values(breakdown).reduce((acc, val) => acc + val, 0);
 
-    // Nuevo: lógica de umbral variable según monto solicitado
     const monto = req.body.montoSolicitado || 0;
+    const thresholds = getThresholdsForAmount(monto);
     let estado = "rechazado";
 
-    if (monto <= 300000) {
-      if (scoringFinal >= 55) estado = "aprobado";
-      else if (scoringFinal >= 45) estado = "condicionado";
-      else estado = "rechazado";
-    } else if (monto <= 3000000) {
-      if (scoringFinal >= 65) estado = "aprobado";
-      else if (scoringFinal >= 55) estado = "condicionado";
-      else estado = "rechazado";
-    } else if (monto <= 10000000) {
-      if (scoringFinal >= 75) estado = "aprobado";
-      else if (scoringFinal >= 65) estado = "condicionado";
-      else estado = "rechazado";
-    } else {
-      if (scoringFinal >= 85) estado = "aprobado";
-      else if (scoringFinal >= 75) estado = "condicionado";
-      else estado = "rechazado";
-    }
+    if (scoringFinal >= thresholds.aprobado) estado = "aprobado";
+    else if (scoringFinal >= thresholds.condicionado) estado = "condicionado";
+
+    const feedback = buildScoringFeedback({
+      breakdown,
+      dicom,
+      pensionAlimenticia,
+      ingresos,
+      historial,
+      antiguedad,
+      endeudamiento,
+      scoringFinal,
+      monto,
+      estado,
+      thresholds,
+    });
 
     res.json({
       ok: true,
@@ -106,7 +198,11 @@ exports.calcularScoring = (req, res) => {
       ingresos,
       historial,
       antiguedad,
-      endeudamiento
+      endeudamiento,
+      decision: feedback.decision,
+      motivos: feedback.motivos,
+      recomendaciones: feedback.recomendaciones,
+      umbrales: feedback.umbrales,
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'Error al calcular scoring.' });

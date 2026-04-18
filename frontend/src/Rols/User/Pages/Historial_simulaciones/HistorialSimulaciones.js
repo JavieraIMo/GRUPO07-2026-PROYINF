@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ModalDetalleSimulacion from './ModalDetalleSimulacion';
 
 function formatCLP(value) {
@@ -31,6 +31,28 @@ function buildSimulationDraft(simulacion) {
   };
 }
 
+function getSimulationActionLabel(simulacion) {
+  const scoringStatus = parseScoringDetail(simulacion.scoring_detalle)?.estado;
+
+  if (scoringStatus === 'aprobado') {
+    return 'Ir a postular';
+  }
+
+  if (!scoringStatus) {
+    return 'Completar scoring';
+  }
+
+  return 'Revisar scoring';
+}
+
+function getApplicationTrackingLabel(simulacion) {
+  if (!simulacion.estado_postulacion) {
+    return null;
+  }
+
+  return 'Seguimiento de postulación';
+}
+
 function buildPaginationItems(currentPage, totalPages) {
   if (totalPages <= 7) {
     return Array.from({ length: totalPages }, (_, index) => index + 1);
@@ -56,6 +78,7 @@ function buildPaginationItems(currentPage, totalPages) {
 }
 
 const HistorialSimulaciones = ({ user }) => {
+  const location = useLocation();
   const navigate = useNavigate();
   const [detalleSim, setDetalleSim] = useState(null);
   const [simulaciones, setSimulaciones] = useState([]);
@@ -65,11 +88,22 @@ const HistorialSimulaciones = ({ user }) => {
   const [filtroMonto, setFiltroMonto] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroFecha, setFiltroFecha] = useState('');
+  const [targetHandled, setTargetHandled] = useState(false);
   const PAGE_SIZE = 10;
 
   const handleGoToApplication = (simulacion) => {
     const scoringInfo = parseScoringDetail(simulacion.scoring_detalle);
     const scoringStatus = scoringInfo?.estado ?? scoringInfo?.categoria;
+
+    if (simulacion.estado_postulacion) {
+      navigate('/historial-postulaciones', {
+        state: {
+          openApplicationDetail: true,
+          targetSimulationId: simulacion.id,
+        },
+      });
+      return;
+    }
 
     if (!simulacion.estado_postulacion && scoringStatus === 'aprobado') {
       navigate('/postulacion', {
@@ -128,6 +162,27 @@ const HistorialSimulaciones = ({ user }) => {
         setLoading(false);
       });
   }, [user]);
+
+  useEffect(() => {
+    if (targetHandled || loading || simulaciones.length === 0) {
+      return;
+    }
+
+    const targetSimulationId = Number(location.state?.targetSimulationId);
+    const shouldOpenDetail = Boolean(location.state?.openSimulationDetail);
+
+    if (!shouldOpenDetail || !Number.isFinite(targetSimulationId)) {
+      return;
+    }
+
+    const targetSimulation = simulaciones.find((simulacion) => Number(simulacion.id) === targetSimulationId);
+
+    if (targetSimulation) {
+      setDetalleSim(targetSimulation);
+    }
+
+    setTargetHandled(true);
+  }, [loading, location.state, simulaciones, targetHandled]);
 
   if (!user) return <div style={{textAlign:'center',marginTop:'2rem'}}>Debes iniciar sesión para ver tu historial de simulaciones.</div>;
   if (loading) return <div style={{textAlign:'center',marginTop:'2rem'}}>Cargando historial de simulaciones...</div>;
@@ -293,13 +348,16 @@ const HistorialSimulaciones = ({ user }) => {
                   <td className="historial-actions-cell">
                     <div className="historial-actions-group">
                       <button className="historial-action-button historial-action-primary" onClick={() => setDetalleSim(sim)}>Ver detalle</button>
-                      {!sim.estado_postulacion && (
-                        <button
-                          className="historial-action-button historial-action-secondary"
-                          onClick={() => handleGoToApplication(sim)}
-                        >
-                          {parseScoringDetail(sim.scoring_detalle)?.estado === 'aprobado' ? 'Ir a postular' : 'Completar scoring'}
-                        </button>
+                      <button
+                        className="historial-action-button historial-action-secondary"
+                        onClick={() => handleGoToApplication(sim)}
+                      >
+                        {sim.estado_postulacion ? getApplicationTrackingLabel(sim) : getSimulationActionLabel(sim)}
+                      </button>
+                      {sim.estado_postulacion && (
+                        <span className="historial-status-badge">
+                          Postulación enviada
+                        </span>
                       )}
                     </div>
                   </td>
