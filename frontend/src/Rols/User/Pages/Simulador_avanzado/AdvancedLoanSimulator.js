@@ -473,7 +473,7 @@ const AdvancedLoanSimulator = ({ user }) => {
                 {buildScoringActionSummary(scoringResult)}
               </div>
             )}
-            {Array.isArray(scoringResult.motivos) && scoringResult.motivos.length > 0 && (
+            {scoringResult.estado !== 'aprobado' && Array.isArray(scoringResult.motivos) && scoringResult.motivos.length > 0 && (
               <div style={{marginTop:'1rem',padding:'1rem',borderRadius:10,background:'#fff1f2',border:'1px solid #fecdd3'}}>
                 <h4 style={{margin:'0 0 0.65rem',color:'#9f1239'}}>Por qué no quedó preaprobado</h4>
                 <ul style={{margin:0,paddingLeft:'1.1rem',color:'#881337',lineHeight:1.5}}>
@@ -483,7 +483,7 @@ const AdvancedLoanSimulator = ({ user }) => {
                 </ul>
               </div>
             )}
-            {Array.isArray(scoringResult.recomendaciones) && scoringResult.recomendaciones.length > 0 && (
+            {scoringResult.estado !== 'aprobado' && Array.isArray(scoringResult.recomendaciones) && scoringResult.recomendaciones.length > 0 && (
               <div style={{marginTop:'1rem',padding:'1rem',borderRadius:10,background:'#eff6ff',border:'1px solid #bfdbfe'}}>
                 <h4 style={{margin:'0 0 0.65rem',color:'#1d4ed8'}}>Recomendaciones para mejorar</h4>
                 <ul style={{margin:0,paddingLeft:'1.1rem',color:'#1e3a8a',lineHeight:1.5}}>
