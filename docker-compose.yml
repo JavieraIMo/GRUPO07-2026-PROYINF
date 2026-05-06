@@ -13,9 +13,13 @@ services:
       - DB_NAME=mydb
     depends_on:
       - postgres_db
+      - ocr_service
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ./uploads:/app/uploads # Misma carpeta compartida
+    networks:
+      - alara-network # Asegúrate de que estén en la misma red
 
   # Frontend React
   frontend:
@@ -35,6 +39,18 @@ services:
       - WDS_SOCKET_HOST=localhost
       - WDS_SOCKET_PORT=3000
       - WDS_SOCKET_PATH=/ws
+    networks:
+      - alara-network # Asegúrate de que estén en la misma red
+
+  ocr_service:
+    build: ./ocr_service
+    container_name: alara_ocr
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./uploads:/app/uploads # Misma carpeta compartida
+    networks:
+      - alara-network # Asegúrate de que estén en la misma red
 
   tester:
     image: python:3.11-slim
@@ -45,6 +61,8 @@ services:
       - backend
     command: >
       sh -c "pip install -r requirements.txt && python -m unittest discover"
+    networks:
+      - alara-network # Asegúrate de que estén en la misma red
 
   postgres_db:
     image: postgres:15-alpine
@@ -57,6 +75,8 @@ services:
       - ./backend/initdb:/docker-entrypoint-initdb.d
     ports:
       - "5433:5432"
+    networks:
+      - alara-network # Asegúrate de que estén en la misma red
 
   # pgAdmin - Interfaz gráfica para PostgreSQL
   pgadmin:
@@ -72,7 +92,13 @@ services:
       - postgres_db
     volumes:
       - ./backend/initdb:/docker-entrypoint-initdb.d
+    networks:
+      - alara-network
 
 volumes:
   postgres_data:
   pgadmin_data:
+
+networks:
+  alara-network:
+    driver: bridge

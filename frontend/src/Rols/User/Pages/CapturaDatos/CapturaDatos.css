@@ -1,0 +1,75 @@
+/* CapturaDatos.css */
+.ocr-container {
+    max-width: 1000px;
+    margin: 2rem auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.ocr-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.ocr-card {
+    background: #ffffff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+}
+
+.upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+.upload-area:hover {
+    border-color: #3b82f6;
+}
+
+.preview-img {
+    max-height: 200px;
+    margin: 0 auto;
+    border-radius: 4px;
+}
+
+.btn-analizar {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: 0.8rem;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-analizar:disabled {
+    background-color: #94a3b8;
+}
+
+.result-box {
+    background: #f8fafc;
+    border-left: 4px solid #10b981;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.data-label {
+    font-size: 0.75rem;
+    color: #64748b;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.data-value {
+    font-size: 1.2rem;
+    color: #1e293b;
+    font-family: monospace;
+}

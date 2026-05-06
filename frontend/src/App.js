@@ -27,7 +27,7 @@ import EditarPerfil from './Rols/User/Pages/Perfil/editarPerfil';
 
 
 import PostulacionForm from './Rols/User/Pages/PostulacionForm';
-
+import CapturaAutomatica from './Rols/User/Pages/CapturaDatos/CapturaDatos';
 
 function App() {
   const renderProtectedRoute = (element) => {
@@ -160,6 +160,9 @@ function App() {
             <Route path="/notificaciones" element={renderProtectedRoute(<Notificaciones user={user} />)} />
             <Route path="/configuracion" element={renderProtectedRoute(<Configuracion user={user} setUser={setUser} />)} />
             <Route path="/postulacion" element={renderProtectedRoute(<PostulacionForm user={user} />)} />
+            <Route path="/captura-datos" element={renderProtectedRoute(<CapturaAutomatica user={user} />)}/>
+            
+            
             {/* Agrega más rutas si tienes más páginas */}
           </Routes>
         </main>

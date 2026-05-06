@@ -13,6 +13,7 @@ const simulacionesRoutes = require('./src/routes/simulaciones');
 const notificacionesRoutes = require('./src/routes/notificacionesRoutes');
 const solicitudRoutes = require('./src/routes/solicitud');
 const scoringRoutes = require('./src/routes/scoring');
+const ocrRoutes = require('./src/routes/ocrRoutes'); // Importarar rutas OCR
 
 // Inicializar aplicación Express
 const app = express();
@@ -71,6 +72,7 @@ app.use('/api/simulaciones', simulacionesRoutes);
 app.use('/api/notificaciones', notificacionesRoutes);
 app.use('/api/solicitud', solicitudRoutes);
 app.use('/api/scoring', scoringRoutes);
+app.use('/api/ocr', ocrRoutes);
 
 // Mantener las rutas legacy para compatibilidad con React
 const AuthController = require('./src/controllers/authController');

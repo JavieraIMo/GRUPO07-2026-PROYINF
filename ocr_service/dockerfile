@@ -1,0 +1,19 @@
+FROM python:3.9-slim
+
+# Instalamos Tesseract y las dependencias de sistema
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Instalamos librerías de Python (Sin PyTorch, mucho más ligero)
+RUN pip install --no-cache-dir flask pytesseract pdfplumber opencv-python-headless Pillow
+
+COPY . .
+
+EXPOSE 5000
+CMD ["python", "main.py"]
