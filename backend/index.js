@@ -14,6 +14,7 @@ const notificacionesRoutes = require('./src/routes/notificacionesRoutes');
 const solicitudRoutes = require('./src/routes/solicitud');
 const scoringRoutes = require('./src/routes/scoring');
 const ocrRoutes = require('./src/routes/ocrRoutes'); // Importarar rutas OCR
+const deleteImageRoutes = require('./src/routes/deleteImageRoutes'); // Importarar rutas para eliminar imágenes
 
 // Inicializar aplicación Express
 const app = express();
@@ -73,6 +74,7 @@ app.use('/api/notificaciones', notificacionesRoutes);
 app.use('/api/solicitud', solicitudRoutes);
 app.use('/api/scoring', scoringRoutes);
 app.use('/api/ocr', ocrRoutes);
+app.use('/api/image', deleteImageRoutes);
 
 // Mantener las rutas legacy para compatibilidad con React
 const AuthController = require('./src/controllers/authController');
@@ -136,6 +138,46 @@ app.listen(port, () => {
 
 // Simular préstamo (lo que React enviará)
 app.post('/api/simulate', (req, res) => {
+  try {
+    const { amount, term, interestRate } = req.body;
+    
+    // Validaciones básicas
+    if (!amount || !term || !interestRate) {
+      return res.status(400).json({
+        error: 'Faltan datos: amount, term, interestRate son requeridos'
+      });
+    }
+
+    // Cálculos del préstamo
+    const monthlyRate = interestRate / 100 / 12;
+    const monthlyPayment = amount * 
+      (monthlyRate * Math.pow(1 + monthlyRate, term)) /
+      (Math.pow(1 + monthlyRate, term) - 1);
+    
+    const totalAmount = monthlyPayment * term;
+    const totalInterest = totalAmount - amount;
+
+    // Respuesta JSON para React
+    res.json({
+      success: true,
+      data: {
+        amount: amount,
+        term: term,
+        interestRate: interestRate,
+        monthlyPayment: Math.round(monthlyPayment),
+        totalAmount: Math.round(totalAmount),
+        totalInterest: Math.round(totalInterest)
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Error en el cálculo del préstamo'
+    });
+  }
+});
+app.post('/api/simulaciones/simulate', (req, res) => {
   try {
     const { amount, term, interestRate } = req.body;
     

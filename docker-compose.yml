@@ -19,7 +19,7 @@ services:
       - /app/node_modules
       - ./uploads:/app/uploads # Misma carpeta compartida
     networks:
-      - alara-network # Asegúrate de que estén en la misma red
+      - alara-network # Asegurarse de que estén en la misma red
 
   # Frontend React
   frontend:
@@ -40,7 +40,7 @@ services:
       - WDS_SOCKET_PORT=3000
       - WDS_SOCKET_PATH=/ws
     networks:
-      - alara-network # Asegúrate de que estén en la misma red
+      - alara-network # Asegurarse de que estén en la misma red
 
   ocr_service:
     build: ./ocr_service
@@ -50,7 +50,7 @@ services:
     volumes:
       - ./uploads:/app/uploads # Misma carpeta compartida
     networks:
-      - alara-network # Asegúrate de que estén en la misma red
+      - alara-network # Asegurarse de que estén en la misma red
 
   tester:
     image: python:3.11-slim
@@ -60,9 +60,9 @@ services:
     depends_on:
       - backend
     command: >
-      sh -c "pip install -r requirements.txt && python -m unittest discover"
+      sh -c "apt-get update && apt-get install -y wget && pip install -r requirements.txt && wget -q https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh && chmod +x wait-for-it.sh && ./wait-for-it.sh backend:3100 -- python -m unittest discover"
     networks:
-      - alara-network # Asegúrate de que estén en la misma red
+      - alara-network # Asegurarse de que estén en la misma red
 
   postgres_db:
     image: postgres:15-alpine
@@ -76,7 +76,7 @@ services:
     ports:
       - "5433:5432"
     networks:
-      - alara-network # Asegúrate de que estén en la misma red
+      - alara-network # Asegurarse de que estén en la misma red
 
   # pgAdmin - Interfaz gráfica para PostgreSQL
   pgadmin:

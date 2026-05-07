@@ -16,4 +16,7 @@ RUN pip install --no-cache-dir flask pytesseract pdfplumber opencv-python-headle
 COPY . .
 
 EXPOSE 5000
-CMD ["python", "main.py"]
+# Asegurarse de que el script sea ejecutable
+RUN chmod +x /app/clean_wait_for_it.sh
+# Ejecutar limpieza antes de iniciar el servicio
+CMD ["/bin/bash", "-c", "./clean_wait_for_it.sh && python main.py"]

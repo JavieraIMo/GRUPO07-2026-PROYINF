@@ -1,4 +1,7 @@
 // No requiere axios, usa fetch nativo de Node 18
+const fs = require('fs');
+const path = require('path');
+
 exports.procesarDocumento = async (req, res) => {
   try {
     if (!req.file) {
@@ -33,16 +36,55 @@ exports.procesarDocumento = async (req, res) => {
     console.log("📝 Texto Crudo:", ocrData.raw_text ? ocrData.raw_text.substring(0, 200) : "VACÍO");
     console.log("-----------------------------------------");
 
+    // Eliminar el archivo subido después de procesar
+    const uploadsPath = path.resolve(__dirname, '../../uploads');
+    const fileToDelete = path.join(uploadsPath, req.file.filename);
+    console.log('[OCR] Intentando eliminar archivo:', fileToDelete);
+    fs.unlink(fileToDelete, (err) => {
+      if (err) {
+        console.error('[OCR] Error al eliminar archivo:', fileToDelete, err.code, err.message);
+      } else {
+        console.log('[OCR] Archivo subido eliminado correctamente:', fileToDelete);
+      }
+    });
+
+    // Eliminar el archivo procesado con sufijo _proc
+    const extIndex = req.file.filename.lastIndexOf('.');
+    let processedFilename;
+    if (extIndex !== -1) {
+      processedFilename = req.file.filename.slice(0, extIndex) + '_proc' + req.file.filename.slice(extIndex);
+    } else {
+      processedFilename = req.file.filename + '_proc';
+    }
+    const processedFileToDelete = path.join(uploadsPath, processedFilename);
+    console.log('[OCR] Intentando eliminar archivo procesado:', processedFileToDelete);
+    fs.unlink(processedFileToDelete, (err) => {
+      if (err) {
+        console.error('[OCR] Error al eliminar archivo procesado:', processedFileToDelete, err.code, err.message);
+      } else {
+        console.log('[OCR] Archivo procesado eliminado correctamente:', processedFileToDelete);
+      }
+    });
+
     if (ocrData.success && ocrData.rut) {
       return res.json({
-        ok: true,
-        rut: ocrData.rut,
-        numeroDocumento: ocrData.numero_documento,
-        mensaje: 'Información extraída correctamente'
+        success: true,
+        data: {
+          rut: ocrData.rut,
+          numeroDocumento: ocrData.numero_documento,
+          nombres: ocrData.nombres,
+          apellidos: ocrData.apellidos,
+          fechaNacimiento: ocrData.fechaNacimiento,
+          fechaEmision: ocrData.fechaEmision,
+          fechaVencimiento: ocrData.fechaVencimiento,
+          tipo: 'Cédula de Identidad',
+          mensaje: 'Información extraída correctamente',
+          filename: req.file.filename // <-- para poder eliminarla luego
+        }
       });
     } else {
       return res.status(422).json({
-        ok: false,
+        success: false,
         error: 'No se pudo detectar un RUT válido.',
         debug: ocrData.raw_text // Enviamos el texto crudo al front para ver qué falló
       });

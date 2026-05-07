@@ -1,6 +1,13 @@
-#Asi se debe ver nuestra entrega final, con los casos de prueba implementados
-# docker compose run --rm tester
+# import os
+# import glob
 
+# Limpiar archivos wait-for-it.sh.* antes de correr los tests
+# for f in glob.glob(os.path.join(os.path.dirname(__file__), 'wait-for-it.sh.*')):
+#     try:
+#         os.remove(f)
+#         print(f"Eliminado: {f}")
+#     except Exception as e:
+#         print(f"No se pudo eliminar {f}: {e}")
 
 # import unittest
 
@@ -42,6 +49,15 @@
 import unittest
 import requests
 import os
+import glob
+
+# Limpiar archivos wait-for-it.sh.* antes de correr los tests
+for f in glob.glob(os.path.join(os.path.dirname(__file__), 'wait-for-it.sh.*')):
+    try:
+        os.remove(f)
+        print(f"Eliminado: {f}")
+    except Exception as e:
+        print(f"No se pudo eliminar {f}: {e}")
 
 class TestAlaraAPI(unittest.TestCase):
 
