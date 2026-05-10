@@ -8,12 +8,12 @@ exports.procesarDocumento = async (req, res) => {
       return res.status(400).json({ ok: false, error: 'No se recibió ningún archivo' });
     }
 
-    console.log(`[OCR] Procesando archivo: ${req.file.filename}`);
+    const timestamp = new Date().toISOString();
+    console.log(`\n🚀 [${timestamp}] --- INICIO PROCESAMIENTO OCR ---`);
+    console.log(`[OCR] Archivo: ${req.file.filename}`);
 
-    // Ruta que el contenedor de Python mapea a través del volumen de Docker
     const filePathForPython = `/app/uploads/${req.file.filename}`;
 
-    // Llamada al servicio de Python usando el nombre del servicio en Docker Compose
     const response = await fetch('http://ocr_service:5000/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -27,43 +27,51 @@ exports.procesarDocumento = async (req, res) => {
 
     const ocrData = await response.json();
 
-    // === BLOQUE DE COMPROBACIÓN CRÍTICO ===
-    console.log("-----------------------------------------");
-    console.log("🔍 RESULTADO DEL OCR DESDE PYTHON:");
-    console.log("✅ Éxito:", ocrData.success);
-    console.log("🆔 RUT Detectado:", ocrData.rut || "NO ENCONTRADO");
-    console.log("📑 NUM. DOCUMENTO:", ocrData.numero_documento || "NO DETECTADO")
-    console.log("📝 Texto Crudo:", ocrData.raw_text ? ocrData.raw_text.substring(0, 200) : "VACÍO");
-    console.log("-----------------------------------------");
+    // === BLOQUE DE LOG DETALLADO Y CLASIFICADO ===
+    console.log("\n╔══════════════════════════════════════════════════════╗");
+    console.log("║       🔍 CLASIFICACIÓN DE DATOS RECIBIDOS            ║");
+    console.log("╚══════════════════════════════════════════════════════╝");
+    console.log(`📊 Éxito del Proceso: ${ocrData.success ? '✅ SÍ' : '❌ NO'}`);
+    console.log(`🆔 RUT:              [${ocrData.rut || 'VACÍO'}]`);
+    console.log(`📑 Num. Documento:   [${ocrData.numero_documento || 'VACÍO'}]`);
+    console.log(`👤 Nombres:          [${ocrData.nombres || 'VACÍO'}]`);
+    console.log(`👤 Apellidos:        [${ocrData.apellidos || 'VACÍO'}]`);
+    console.log(`📅 F. Nacimiento:    [${ocrData.fechaNacimiento || 'VACÍO'}]`);
+    console.log(`📅 F. Vencimiento:   [${ocrData.fechaVencimiento || 'VACÍO'}]`);
+    
+    // Log de diagnóstico para cruce de datos
+    if (ocrData.nombres && ocrData.apellidos) {
+        if (ocrData.nombres === ocrData.apellidos) {
+            console.log("⚠️  ALERTA: El nombre y apellido son idénticos. Posible error de clasificación.");
+        }
+    }
 
-    // Eliminar el archivo subido después de procesar
+  console.log("--------------------------------------------------------");
+  console.log("📝 MUESTRA DEL TEXTO CRUDO COMPLETO:");
+  if (ocrData.raw_text) {
+      // Usamos Template Literals para mantener los saltos de línea originales
+      console.log(`\n"${ocrData.raw_text.trim()}"\n`);
+    } else {
+      console.log("VACÍO");
+  }
+  console.log("--------------------------------------------------------\n");
+
+    // Lógica de eliminación de archivos (se mantiene igual)
     const uploadsPath = path.resolve(__dirname, '../../uploads');
     const fileToDelete = path.join(uploadsPath, req.file.filename);
-    console.log('[OCR] Intentando eliminar archivo:', fileToDelete);
+    
     fs.unlink(fileToDelete, (err) => {
-      if (err) {
-        console.error('[OCR] Error al eliminar archivo:', fileToDelete, err.code, err.message);
-      } else {
-        console.log('[OCR] Archivo subido eliminado correctamente:', fileToDelete);
-      }
+      if (!err) console.log('[OCR] Archivo original eliminado.');
     });
 
-    // Eliminar el archivo procesado con sufijo _proc
     const extIndex = req.file.filename.lastIndexOf('.');
-    let processedFilename;
-    if (extIndex !== -1) {
-      processedFilename = req.file.filename.slice(0, extIndex) + '_proc' + req.file.filename.slice(extIndex);
-    } else {
-      processedFilename = req.file.filename + '_proc';
-    }
+    let processedFilename = extIndex !== -1 
+        ? req.file.filename.slice(0, extIndex) + '_proc' + req.file.filename.slice(extIndex)
+        : req.file.filename + '_proc';
+    
     const processedFileToDelete = path.join(uploadsPath, processedFilename);
-    console.log('[OCR] Intentando eliminar archivo procesado:', processedFileToDelete);
     fs.unlink(processedFileToDelete, (err) => {
-      if (err) {
-        console.error('[OCR] Error al eliminar archivo procesado:', processedFileToDelete, err.code, err.message);
-      } else {
-        console.log('[OCR] Archivo procesado eliminado correctamente:', processedFileToDelete);
-      }
+      if (!err) console.log('[OCR] Archivo procesado eliminado.');
     });
 
     if (ocrData.success && ocrData.rut) {
@@ -78,23 +86,19 @@ exports.procesarDocumento = async (req, res) => {
           fechaEmision: ocrData.fechaEmision,
           fechaVencimiento: ocrData.fechaVencimiento,
           tipo: 'Cédula de Identidad',
-          mensaje: 'Información extraída correctamente',
-          filename: req.file.filename // <-- para poder eliminarla luego
+          filename: req.file.filename
         }
       });
     } else {
       return res.status(422).json({
         success: false,
         error: 'No se pudo detectar un RUT válido.',
-        debug: ocrData.raw_text // Enviamos el texto crudo al front para ver qué falló
+        debug: ocrData.raw_text
       });
     }
 
   } catch (error) {
-    console.error('[OCR Controller Error]:', error.message);
-    res.status(500).json({
-      ok: false,
-      error: 'Error de comunicación con el servicio de reconocimiento.'
-    });
+    console.error('❌ [OCR Controller Error]:', error.message);
+    res.status(500).json({ ok: false, error: 'Error de comunicación con el servicio OCR.' });
   }
 };

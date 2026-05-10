@@ -1,16 +1,22 @@
-// ...existing code...
 import React, { useState, useRef, useEffect } from 'react';
 
 const CapturaDatos = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [extractedData, setExtractedData] = useState(null);
   const [error, setError] = useState(null);
-  const [lastUploadedFilename, setLastUploadedFilename] = useState(null);
   const lastUploadedFilenameRef = useRef(null);
 
-  // Elimina la imagen anterior del backend
+  const [formData, setFormData] = useState({
+    rut: '',
+    nombres: '',
+    apellidos: '',
+    fechaNacimiento: '',
+    numeroDocumento: '',
+    region: '',
+    comuna: ''
+  });
+
   const deleteLastImage = async () => {
     if (lastUploadedFilenameRef.current) {
       try {
@@ -20,34 +26,15 @@ const CapturaDatos = () => {
           body: JSON.stringify({ filename: lastUploadedFilenameRef.current })
         });
         lastUploadedFilenameRef.current = null;
-        setLastUploadedFilename(null);
-      } catch (e) {
-        // No hacer nada si falla
-      }
+      } catch (e) { /* Error silencioso */ }
     }
   };
 
-  // Eliminar imagen al desmontar componente (cambiar de página)
   useEffect(() => {
-    return () => {
-      deleteLastImage();
-    };
+    return () => { deleteLastImage(); };
   }, []);
 
-  const handleRemoveFile = async () => {
-    await deleteLastImage();
-    setFile(null);
-    setPreview(null);
-    setExtractedData(null);
-    setError(null);
-    // Limpia el input file
-    const input = document.getElementById('fileInput');
-    if (input) input.value = '';
-  };
-
-
   const handleFileChange = async (e) => {
-    // Elimina la imagen anterior si existe
     await deleteLastImage();
     const selectedFile = e.target.files[0];
     if (selectedFile) {
@@ -58,146 +45,151 @@ const CapturaDatos = () => {
   };
 
   const handleUpload = async () => {
-    if (!file) {
-      setError("Selecciona un archivo primero.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('documento', file);
-
+    if (!file) { setError("Selecciona un archivo primero."); return; }
+    
+    const data = new FormData();
+    data.append('documento', file);
     setLoading(true);
-    setExtractedData(null);
+    setError(null);
 
     try {
       const response = await fetch('http://localhost:3100/api/ocr/upload', {
         method: 'POST',
-        body: formData,
+        body: data,
       });
 
       const result = await response.json();
+      console.log("Datos recibidos:", result);
 
       if (result.success) {
-        setExtractedData(result.data);
-        // Guardar el nombre del archivo subido para poder eliminarlo después
-        if (result.data && result.data.filename) {
-          setLastUploadedFilename(result.data.filename);
-          lastUploadedFilenameRef.current = result.data.filename;
-        }
+        const ext = result.data || result;
+        setFormData({
+          rut: ext.rut || '',
+          nombres: ext.nombres || '',
+          apellidos: ext.apellidos || '',
+          fechaNacimiento: ext.fechaNacimiento || ext.fecha_nacimiento || '',
+          numeroDocumento: ext.numero_documento || ext.numeroDocumento || '',
+          region: ext.region || '',
+          comuna: ext.comuna || ''
+        });
+        
+        if (ext.filename) lastUploadedFilenameRef.current = ext.filename;
       } else {
-        setError("No se pudo extraer información.");
+        setError(result.error || "No se pudo extraer información.");
       }
     } catch (err) {
-      console.error("Error OCR:", err);
+      console.error("Error en la petición:", err);
       setError("Error de conexión con el servidor.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   return (
-    <div style={{ padding: '40px 0', minHeight: '100vh', background: 'linear-gradient(120deg, #e9f0fa 0%, #f7fafc 100%)', fontFamily: 'Inter, Segoe UI, Arial, sans-serif' }}>
-      <h2 style={{ display: 'flex', alignItems: 'center', fontWeight: 800, fontSize: '2.3rem', marginBottom: 36, color: '#1a237e', letterSpacing: '-1px', justifyContent: 'center' }}>
-        <span style={{ marginRight: 14, fontSize: '2.5rem' }}>📄</span> Captura de Datos
-      </h2>
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '48px', flexWrap: 'wrap' }}>
-        {/* LADO DE CARGA */}
-        <div style={{ minWidth: 420, maxWidth: 520, boxShadow: '0 8px 32px rgba(26,35,126,0.10)', padding: '36px 32px', borderRadius: '22px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', border: '1.5px solid #e3e8f0' }}>
-          <h3 style={{ marginBottom: 22, fontWeight: 700, fontSize: '1.25rem', color: '#26326a' }}>Cargar Documento</h3>
+    <div style={{ padding: '40px 0', minHeight: '100vh', background: '#f0f2f5', fontFamily: 'sans-serif' }}>
+      <h2 style={{ textAlign: 'center', color: '#1a237e', marginBottom: '30px' }}>📄 Captura y Verificación</h2>
+      
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', flexWrap: 'wrap', padding: '0 20px' }}>
+        
+        {/* PANEL IZQUIERDO: CARGA */}
+        <div style={{ width: '450px', background: '#fff', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          <h3 style={{ marginTop: 0 }}>1. Subir Carnet</h3>
           <input type="file" onChange={handleFileChange} id="fileInput" hidden />
-          <label htmlFor="fileInput" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', border: preview ? '2.5px solid #1976d2' : '2.5px dashed #b0bec5', borderRadius: '14px', marginBottom: '18px', background: preview ? '#e3f2fd' : '#f5f7fa', minHeight: 340, width: 480, textAlign: 'center', transition: 'border 0.2s' }}>
-            {preview ? (
-              <img 
-                src={preview} 
-                alt="Vista previa" 
-                style={{ 
-                  width: '440px', 
-                  height: 'auto', 
-                  maxHeight: '300px', 
-                  borderRadius: '14px', 
-                  boxShadow: '0 4px 18px rgba(26,35,126,0.10)', 
-                  objectFit: 'contain',
-                  background: '#fff',
-                  border: '1.5px solid #b0bec5'
-                }} 
-              />
-            ) : (
-              <span style={{ color: '#90a4ae', fontSize: '1.1rem' }}>Selecciona una imagen aquí</span>
-            )}
+          <label htmlFor="fileInput" style={{ 
+            display: 'block', width: '100%', height: '250px', border: '2px dashed #ccc', 
+            borderRadius: '10px', textAlign: 'center', lineHeight: '250px', cursor: 'pointer',
+            overflow: 'hidden', background: '#fafafa', marginBottom: '20px'
+          }}>
+            {preview ? <img src={preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'Click para subir foto'}
           </label>
-          {file && (
-            <button
-              onClick={handleRemoveFile}
-              style={{ width: '100%', marginBottom: '16px', padding: '12px', background: 'linear-gradient(90deg,#e53935 60%,#ff7043 100%)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, fontSize: '1.08rem', boxShadow: '0 2px 8px rgba(229,57,53,0.10)', cursor: 'pointer', transition: 'background 0.2s', letterSpacing: '0.5px' }}
-              type="button"
-            >
-              Eliminar archivo seleccionado
-            </button>
-          )}
-          <button
-            onClick={handleUpload}
+          
+          <button 
+            onClick={handleUpload} 
             disabled={loading || !file}
-            style={{ width: '100%', marginTop: '4px', padding: '13px', background: loading ? '#b3d1fa' : 'linear-gradient(90deg,#1976d2 60%,#00bcd4 100%)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '1.08rem', boxShadow: '0 2px 8px rgba(25,118,210,0.10)', cursor: loading || !file ? 'not-allowed' : 'pointer', transition: 'background 0.2s', letterSpacing: '0.5px' }}
+            style={{ 
+              width: '100%', padding: '12px', background: '#1976d2', 
+              color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer',
+              opacity: (loading || !file) ? 0.6 : 1
+            }}
           >
-            {loading ? '⏳ Procesando...' : 'Iniciar Análisis'}
+            {loading ? 'Analizando...' : 'Iniciar Extracción'}
           </button>
-          {error && <p style={{ color: '#e53935', marginTop: 14, fontWeight: 600, fontSize: '1.05rem' }}>{error}</p>}
+          {error && <p style={{ color: '#d32f2f', textAlign: 'center', marginTop: '15px', fontWeight: 'bold' }}>{error}</p>}
         </div>
-        {/* LADO DE RESULTADOS */}
-        <div style={{ minWidth: 420, maxWidth: 520, background: '#fff', padding: '36px 32px', borderRadius: '22px', boxShadow: '0 8px 32px rgba(26,35,126,0.10)', border: '1.5px solid #e3e8f0', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <h3 style={{ marginBottom: 22, fontWeight: 700, fontSize: '1.25rem', color: '#26326a' }}>Resultados</h3>
-          {extractedData ? (
-            <div style={{ width: '100%' }}>
-              <dl style={{ margin: 0, padding: 0, width: '100%' }}>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>RUT</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.rut || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Nombres</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.nombres || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Apellidos</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.apellidos || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Nacionalidad</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.nacionalidad || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Fecha de nacimiento</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.fechaNacimiento || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Número de documento</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.numeroDocumento || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Fecha de emisión</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.fechaEmision || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Fecha de vencimiento</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.fechaVencimiento || 'No encontrado'}</dd>
-                </div>
-                <div style={{ display: 'flex', borderBottom: '1px solid #e3e8f0', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Tipo</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.tipo || 'No detectado'}</dd>
-                </div>
-                <div style={{ display: 'flex', padding: '16px 0 12px 0', alignItems: 'center' }}>
-                  <dt style={{ minWidth: 210, fontWeight: 700, color: '#1a237e', fontSize: '1.13rem' }}>Mensaje</dt>
-                  <dd style={{ margin: 0, color: '#26326a', fontWeight: 500, fontSize: '1.13rem', minWidth: 210 }}>{extractedData.mensaje || ''}</dd>
-                </div>
-              </dl>
+
+        {/* PANEL DERECHO: FORMULARIO */}
+        <div style={{ width: '500px', background: '#fff', padding: '30px', borderRadius: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          <h3 style={{ marginTop: 0 }}>2. Datos Extraídos</h3>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            
+            {/* Fila 1: RUT y N° Documento */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={inputGroupStyle}>
+                <label style={labelStyle}>RUT</label>
+                <input style={inputStyle} name="rut" value={formData.rut} onChange={handleInputChange} />
+              </div>
+              <div style={inputGroupStyle}>
+                <label style={labelStyle}>N° Documento</label>
+                <input style={inputStyle} name="numeroDocumento" value={formData.numeroDocumento} onChange={handleInputChange} />
+              </div>
             </div>
-          ) : (
-            <p style={{ color: '#90a4ae', fontStyle: 'italic', fontWeight: 500, fontSize: '1.08rem' }}>Sube un archivo para ver los resultados.</p>
-          )}
+
+            {/* Fila 2: Apellidos (Primero, como en el carnet) */}
+            <div style={inputGroupStyle}>
+              <label style={labelStyle}>Apellidos</label>
+              <input style={inputStyle} name="apellidos" value={formData.apellidos} onChange={handleInputChange} />
+            </div>
+
+            {/* Fila 3: Nombres */}
+            <div style={inputGroupStyle}>
+              <label style={labelStyle}>Nombres</label>
+              <input style={inputStyle} name="nombres" value={formData.nombres} onChange={handleInputChange} />
+            </div>
+
+            {/* Fila 4: Fecha Nacimiento */}
+            <div style={inputGroupStyle}>
+              <label style={labelStyle}>Fecha de Nacimiento</label>
+              <input style={inputStyle} name="fechaNacimiento" value={formData.fechaNacimiento} onChange={handleInputChange} />
+            </div>
+
+            {/* Fila 5: Región y Comuna */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={inputGroupStyle}>
+                <label style={labelStyle}>Región</label>
+                <input style={inputStyle} name="region" value={formData.region} onChange={handleInputChange} />
+              </div>
+              <div style={inputGroupStyle}>
+                <label style={labelStyle}>Comuna</label>
+                <input style={inputStyle} name="comuna" value={formData.comuna} onChange={handleInputChange} />
+              </div>
+            </div>
+
+            <button 
+              onClick={() => console.log("Datos confirmados:", formData)}
+              style={{ 
+                marginTop: '10px', padding: '15px', background: '#2e7d32', 
+                color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' 
+              }}
+            >
+              Confirmar y Guardar
+            </button>
+
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+// Estilos
+const inputGroupStyle = { display: 'flex', flexDirection: 'column', flex: 1 };
+const labelStyle = { fontSize: '12px', fontWeight: 'bold', color: '#666', marginBottom: '5px' };
+const inputStyle = { padding: '10px', border: '1px solid #ddd', borderRadius: '5px', fontSize: '14px', background: '#fafafa', width: '100%', boxSizing: 'border-box' };
 
 export default CapturaDatos;
