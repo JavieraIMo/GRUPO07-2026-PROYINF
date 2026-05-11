@@ -59,8 +59,9 @@ services:
     working_dir: /app
     depends_on:
       - backend
+      - ocr_service
     command: >
-      sh -c "apt-get update && apt-get install -y wget && pip install -r requirements.txt && wget -q https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh && chmod +x wait-for-it.sh && ./wait-for-it.sh backend:3100 -- python -m unittest discover"
+      sh -c "apt-get update && apt-get install -y wget && pip install -r requirements.txt && wget -q https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh && chmod +x wait-for-it.sh && ./wait-for-it.sh backend:3100 -- ./wait-for-it.sh ocr_service:5000 -- python -m unittest discover"
     networks:
       - alara-network # Asegurarse de que estén en la misma red
 

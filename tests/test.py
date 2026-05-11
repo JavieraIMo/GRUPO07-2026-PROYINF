@@ -119,7 +119,31 @@ class TestAlaraAPI(unittest.TestCase):
         response = requests.post(ruta, json=payload_incompleto)
         
         self.assertEqual(response.status_code, 400)
+        
+    def test_05_ocr_archivo_inexistente(self):
+        ruta = "http://ocr_service:5000/process"
 
+        payload = {
+            "filePath": "archivo_que_no_existe.png"
+        }
+
+        response = requests.post(ruta, json=payload)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.json()["success"])
+        self.assertIn("error", response.json())
+
+
+    def test_06_ocr_sin_filepath(self):
+        ruta = "http://ocr_service:5000/process"
+
+        payload = {}
+
+        response = requests.post(ruta, json=payload)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(response.json()["success"])
+        self.assertIn("error", response.json())
     # -----------------------------------------------------
     # CIERRE
     # -----------------------------------------------------
