@@ -6,6 +6,11 @@ from PIL import Image
 import os
 from flask import Flask, request, jsonify
 
+
+from lector_liquidacion import *
+
+
+
 app = Flask(__name__)
 
 # --- LÓGICA DE EXTRACCIÓN MEJORADA V2 ---
@@ -171,6 +176,34 @@ def process_ocr():
     except Exception as e:
         print(f"Error en Python: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+    
+
+# =========================================================================
+# 2. NUEVO ENDPOINT: PROCESAMIENTO DE LIQUIDACIÓN DE SUELDO (pdfplumber)
+# =========================================================================
+@app.route('/process-liquidacion', methods=['POST'])
+def process_liquidacion():
+    try:
+        data = request.get_json()
+        file_path = data.get('filePath')
+        
+        # Validación de existencia del archivo
+        if not file_path or not os.path.exists(file_path):
+            return jsonify({"success": False, "error": "Archivo de liquidación no encontrado en el servidor"}), 404
+
+        # Llamamos al procesador modular que extrae textos financieros e identidad
+        resultado_financiero = procesar_liquidacion_chile(file_path)
+        
+        resultado_financiero["raw_text"] = extraer_texto_pdf(file_path)
+        
+        # Retornamos el JSON directamente al backend de Node.js
+        return jsonify(resultado_financiero)
+
+    except Exception as e:
+        print(f"Error en Python Liquidación: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

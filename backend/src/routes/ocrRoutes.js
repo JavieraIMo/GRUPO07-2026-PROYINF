@@ -14,6 +14,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// --- RUTA ORIGINAL: CÉDULA DE IDENTIDAD (Imagen/Foto) ---
 router.post('/upload', upload.single('documento'), ocrController.procesarDocumento);
+
+// --- CORREGIDO: NUEVA RUTA EXCLUSIVA PARA LIQUIDACIÓN DE SUELDO (PDF) ---
+// Cambiamos el endpoint a '/upload-liquidacion' para evitar el conflicto de duplicidad
+router.post('/upload-liquidacion', upload.single('documento'), ocrController.procesarLiquidacion);
 
 module.exports = router;

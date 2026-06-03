@@ -206,7 +206,7 @@ function Dashboard({ user }) {
           <div className="dashboard-actions">
             {/* <button onClick={() => navigate('/seleccionar-tipo-prestamo')}>Simular Préstamo Básico</button> */}
             
-            <button className="btn-highlight-capture" onClick={() => navigate('/captura-datos')}> ✨ Carga Automática de Datos </button>
+            <button className="btn-highlight-capture" onClick={() => navigate('/captura-datos')}> Captura de Datos de Usuario</button>
             
             <button onClick={() => navigate('/simulador-avanzado')}>Simulador</button>
             <button onClick={() => navigate('/historial-simulaciones')}>Ver Historial Simulaciones</button>

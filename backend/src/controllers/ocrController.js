@@ -2,6 +2,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// =========================================================================
+// 1. CONTROLADOR DE CÉDULA DE IDENTIDAD (Original intacto)
+// =========================================================================
 exports.procesarDocumento = async (req, res) => {
   try {
     if (!req.file) {
@@ -39,24 +42,22 @@ exports.procesarDocumento = async (req, res) => {
     console.log(`📅 F. Nacimiento:    [${ocrData.fechaNacimiento || 'VACÍO'}]`);
     console.log(`📅 F. Vencimiento:   [${ocrData.fechaVencimiento || 'VACÍO'}]`);
     
-    // Log de diagnóstico para cruce de datos
     if (ocrData.nombres && ocrData.apellidos) {
         if (ocrData.nombres === ocrData.apellidos) {
             console.log("⚠️  ALERTA: El nombre y apellido son idénticos. Posible error de clasificación.");
         }
     }
 
-  console.log("--------------------------------------------------------");
-  console.log("📝 MUESTRA DEL TEXTO CRUDO COMPLETO:");
-  if (ocrData.raw_text) {
-      // Usamos Template Literals para mantener los saltos de línea originales
-      console.log(`\n"${ocrData.raw_text.trim()}"\n`);
+    console.log("--------------------------------------------------------");
+    console.log("📝 MUESTRA DEL TEXTO CRUDO COMPLETO:");
+    if (ocrData.raw_text) {
+        console.log(`\n"${ocrData.raw_text.trim()}"\n`);
     } else {
-      console.log("VACÍO");
-  }
-  console.log("--------------------------------------------------------\n");
+        console.log("VACÍO");
+    }
+    console.log("--------------------------------------------------------\n");
 
-    // Lógica de eliminación de archivos (se mantiene igual)
+    // Lógica de eliminación de archivos
     const uploadsPath = path.resolve(__dirname, '../../uploads');
     const fileToDelete = path.join(uploadsPath, req.file.filename);
     
@@ -100,5 +101,99 @@ exports.procesarDocumento = async (req, res) => {
   } catch (error) {
     console.error('❌ [OCR Controller Error]:', error.message);
     res.status(500).json({ ok: false, error: 'Error de comunicación con el servicio OCR.' });
+  }
+}; // <-- AQUÍ SE CIERRA CORRECTAMENTE EL PRIMER CONTROLADOR
+
+
+// =========================================================================
+// 2. NUEVO CONTROLADOR: PROCESAMIENTO DE LIQUIDACIÓN DE SUELDO
+// =========================================================================
+exports.procesarLiquidacion = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'No se recibió ningún archivo PDF' });
+    }
+
+    const timestamp = new Date().toISOString();
+    console.log(`\n🚀 [${timestamp}] --- INICIO PROCESAMIENTO LIQUIDACIÓN (PDF) ---`);
+    console.log(`[PDF_READER] Archivo: ${req.file.filename}`);
+
+    const filePathForPython = `/app/uploads/${req.file.filename}`;
+
+    // CORREGIDO: Ahora apunta a /process-liquidacion en Flask
+    const response = await fetch('http://ocr_service:5000/process-liquidacion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath: filePathForPython })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Servidor Python respondió con error: ${response.status} - ${errorText}`);
+    }
+
+    const liqData = await response.json();
+
+    // === NUEVO BLOQUE DE LOG FINANCIERO PERSONALIZADO ===
+    console.log("\n╔══════════════════════════════════════════════════════╗");
+    console.log("║        🔍 CLASIFICACIÓN DE DATOS FINANCIEROS         ║");
+    console.log("╚══════════════════════════════════════════════════════╝");
+    console.log(`📊 Éxito del Proceso: ${liqData.success ? '✅ SÍ' : '❌ NO'}`);
+    console.log(`🆔 RUT Trabajador:   [${liqData.rut || 'VACÍO'}]`);
+    console.log(`👤 Nombre Completo:  [${liqData.nombre_completo_doc || 'VACÍO'}]`);
+    console.log(`🏠 Dirección:        [${liqData.direccion || 'VACÍO'}]`);
+    console.log(`📞 Teléfono:         [${liqData.telefono || 'VACÍO'}]`);
+    console.log(`📧 E-mail:           [${liqData.email || 'VACÍO'}]`); // <-- NUEVO LOG
+    console.log(`💰 Sueldo Base:      [${liqData.sueldo_base || '0'}]`);
+    console.log(`👶 Cargas Famil.:    [${liqData.asignacion_family || '0'}]`); // <-- Ajustado el nombre visual
+    console.log(`🏦 Institución AFP:  [${liqData.nombre_afp || 'VACÍO'}]`);
+    console.log(`🏥 Previsión Salud:  [${liqData.nombre_salud || 'VACÍO'}]`);
+    console.log(`💵 Ingreso Líquido:  [${liqData.saldo_liquido || '0'}]`);
+    console.log("--------------------------------------------------------");
+    console.log("📝 MUESTRA DEL TEXTO CRUDO COMPLETO:");
+    if (liqData.text_preview || liqData.raw_text) {
+        const textToShow = liqData.text_preview || liqData.raw_text;
+        console.log(`\n"${textToShow.trim()}"\n`);
+    } else {
+        console.log("Muestra no disponible en formato crudo.");
+    }
+    console.log("--------------------------------------------------------\n");
+
+    // Limpieza del PDF original
+    const uploadsPath = path.resolve(__dirname, '../../uploads');
+    const fileToDelete = path.join(uploadsPath, req.file.filename);
+    
+    fs.unlink(fileToDelete, (err) => {
+      if (!err) console.log('[PDF_READER] Archivo original de liquidación eliminado.');
+    });
+
+    if (liqData.success) {
+      return res.json({
+        success: true,
+        data: {
+          rut: liqData.rut,
+          nombreCompletoDoc: liqData.nombre_completo_doc,
+          direccion: liqData.direccion,
+          telefono: liqData.telefono,
+          email: liqData.email, // <-- DISPONIBLE PARA REACT
+          sueldoBase: liqData.sueldo_base,
+          asignacionFamiliares: liqData.asignacion_family,
+          nombreAfp: liqData.nombre_afp,
+          nombreSalud: liqData.nombre_salud,
+          ingresos: liqData.saldo_liquido,
+          tipo: 'Liquidación de Remuneraciones',
+          filename: req.file.filename
+        }
+      });
+    }else {
+      return res.status(422).json({
+        success: false,
+        error: 'No se pudo estructurar la información del PDF de forma válida.'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ [Liquidación Controller Error]:', error.message);
+    res.status(500).json({ ok: false, error: 'Error de comunicación con el servicio de liquidaciones.' });
   }
 };
