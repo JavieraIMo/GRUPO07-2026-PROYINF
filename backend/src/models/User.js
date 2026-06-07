@@ -30,6 +30,10 @@ class User {
         this.fecha_registro = data.fecha_registro;
         this.activo = data.activo;
         this.claveunica_verificada = data.claveunica_verificada || false;
+        this.sueldo_base = data.sueldo_base;
+        this.asignacion_familiares = data.asignacion_familiares;
+        this.nombre_afp = data.nombre_afp;
+        this.nombre_salud = data.nombre_salud;
     }
 
     // ==========================================
@@ -50,18 +54,36 @@ class User {
             const saltRounds = 10;
             const password_hash = await bcrypt.hash(userData.password, saltRounds);
             const query = `
-                INSERT INTO clientes (rut, nombre_completo, email, telefono, password_hash, rol)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING id, rut, nombre_completo, email, telefono, rol, fecha_registro, activo, claveunica_verificada
+                INSERT INTO clientes (
+                    rut,
+                    nombre_completo,
+                    email,
+                    telefono,
+                    password_hash,
+                    rol,
+                    sueldo_base,
+                    asignacion_familiares,
+                    nombre_afp,
+                    nombre_salud
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                RETURNING *;
             `;
+
             const values = [
                 userData.rut,
                 userData.nombre_completo,
                 userData.email,
                 userData.telefono || null,
                 password_hash,
-                userData.rol || 'user'
+                userData.rol || 'user',
+                userData.sueldo_base || null,
+                userData.asignacion_familiares || null,
+                userData.nombre_afp || null,
+                userData.nombre_salud || null
             ];
+
+
             const result = await db.query(query, values);
             return new User(result.rows[0]);
         } catch (error) {

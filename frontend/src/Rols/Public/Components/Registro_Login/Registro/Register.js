@@ -261,6 +261,10 @@ function Register({ onClose, onSuccess }) {
           ...result.data.user,
           token: result.data.token
         });
+        localStorage.setItem('alara_user', JSON.stringify({
+          ...result.data.user,
+          token: result.data.token
+        }));
         onSuccess({
           ...result.data.user,
           nombre: result.data.user.nombre || result.data.user.nombre_completo || '',
