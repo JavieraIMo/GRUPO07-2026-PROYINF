@@ -16,6 +16,9 @@ const scoringRoutes = require('./src/routes/scoring');
 const ocrRoutes = require('./src/routes/ocrRoutes'); // Importarar rutas OCR
 const deleteImageRoutes = require('./src/routes/deleteImageRoutes'); // Importarar rutas para eliminar imágenes
 
+const clientesModule = require('./src/routes/clientes');
+const clientesRoutes = clientesModule.router || clientesModule;
+
 // Inicializar aplicación Express
 const app = express();
 const port = process.env.PORT || 3100;
@@ -75,6 +78,7 @@ app.use('/api/solicitud', solicitudRoutes);
 app.use('/api/scoring', scoringRoutes);
 app.use('/api/ocr', ocrRoutes);
 app.use('/api/image', deleteImageRoutes);
+app.use('/api/clientes', clientesRoutes);
 
 // Mantener las rutas legacy para compatibilidad con React
 const AuthController = require('./src/controllers/authController');

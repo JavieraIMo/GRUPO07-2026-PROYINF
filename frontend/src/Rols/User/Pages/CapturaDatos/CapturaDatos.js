@@ -1,5 +1,40 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+const convertirFechaOCR = (fecha) => {
+  if (!fecha) return '';
+
+  const meses = {
+    ene: '01',
+    feb: '02',
+    mar: '03',
+    abr: '04',
+    may: '05',
+    jun: '06',
+    jul: '07',
+    ago: '08',
+    sep: '09',
+    oct: '10',
+    nov: '11',
+    dic: '12'
+  };
+
+  const texto = fecha
+    .toLowerCase()
+    .replace(/\./g, '')
+    .trim();
+
+  const match = texto.match(/(\d{1,2})[\s\-\/]+([a-záéíóúñ]+)[\s\-\/]+(\d{4})/);
+
+  if (!match) return '';
+
+  const dia = match[1].padStart(2, '0');
+  const mes = meses[match[2].substring(0, 3)];
+
+  if (!mes) return '';
+
+  return `${match[3]}-${mes}-${dia}`;
+};
+
 const CapturaDatos = () => {
   // --- ESTADOS PARA CARNET ---
   const [fileCarnet, setFileCarnet] = useState(null);
@@ -60,6 +95,25 @@ const CapturaDatos = () => {
     return () => { deleteLastImage(); };
   }, []);
 
+  useEffect(() => {
+
+    const usuarioGuardado = localStorage.getItem('alara_user');
+
+    if (!usuarioGuardado) return;
+
+    const usuario = JSON.parse(usuarioGuardado);
+
+    console.log('Usuario cargado:', usuario);
+
+    setFormData(prev => ({
+      ...prev,
+      rut: usuario.rut || '',
+      email: usuario.email || '',
+      telefono: usuario.telefono || ''
+    }));
+
+  }, []);
+
   // Manejadores de archivos individuales
   const handleCarnetChange = async (e) => {
     await deleteLastImage();
@@ -110,7 +164,10 @@ const CapturaDatos = () => {
           rut: ext.rut || prev.rut || '',
           nombres: ext.nombres || prev.nombres || '',
           apellidos: ext.apellidos || prev.apellidos || '',
-          fechaNacimiento: ext.fechaNacimiento || ext.fecha_nacimiento || prev.fechaNacimiento || '',
+          fechaNacimiento:
+          convertirFechaOCR(ext.fechaNacimiento || ext.fecha_nacimiento) ||
+          prev.fechaNacimiento ||
+          '',
           email: ext.email || prev.email || '',
           region: ext.region || prev.region || '',
           comuna: ext.comuna || prev.comuna || '',
