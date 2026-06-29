@@ -86,31 +86,6 @@ app.get('/api/check-email/:email', AuthController.checkEmail);
 app.post('/api/register', AuthController.register);
 
 // =====================================================
-// MIDDLEWARES DE ERROR
-// =====================================================
-
-// Manejo de rutas no encontradas
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint no encontrado',
-    path: req.originalUrl,
-    method: req.method
-  });
-});
-
-// Manejo global de errores
-app.use((error, req, res, next) => {
-  console.error('Error global:', error);
-  
-  res.status(error.status || 500).json({
-    success: false,
-    error: error.message || 'Error interno del servidor',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-  });
-});
-
-// =====================================================
 // INICIAR SERVIDOR
 // =====================================================
 
@@ -278,5 +253,31 @@ app.get('*', (req, res) => {
     message: 'API Simulador de Préstamos',
     note: 'Esta es una API REST. Usa /api/ para acceder a los endpoints.',
     frontend: 'Ejecuta la app React en el puerto 3101'
+  });
+});
+
+
+// =====================================================
+// MIDDLEWARES DE ERROR
+// =====================================================
+
+// Manejo de rutas no encontradas
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint no encontrado',
+    path: req.originalUrl,
+    method: req.method
+  });
+});
+
+// Manejo global de errores
+app.use((error, req, res, next) => {
+  console.error('Error global:', error);
+  
+  res.status(error.status || 500).json({
+    success: false,
+    error: error.message || 'Error interno del servidor',
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
   });
 });
