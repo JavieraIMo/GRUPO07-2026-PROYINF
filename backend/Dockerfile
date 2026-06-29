@@ -5,7 +5,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-COPY . .
+COPY index.js db.js crear_notificaciones_bienvenida.js ./
+COPY src ./src
+COPY sql ./sql
+COPY initdb ./initdb
+COPY db ./db
 
 # Instalar nodemon globalmente
 RUN npm install -g nodemon

@@ -340,8 +340,9 @@ COMMENT ON COLUMN simulaciones.session_id IS 'UUID para vincular simulaciones an
 COMMENT ON COLUMN evaluaciones_riesgo.fuentes_consultadas IS 'APIs externas: Registro Civil, DICOM, etc.';
 
 
+-- Seed administrativo sin secreto versionado: la contraseña debe configurarse en runtime.
 INSERT INTO clientes (rut, nombre_completo, email, telefono, password_hash, rol, activo) VALUES
-('11.111.111-1', 'Administrador ALARA', 'admin@alara.cl', '+56911111111', '$2b$10$.GKUTby7AFZDbOuckqloduSF5EiCEpeMxwSjCbit9EQuw5miu7dOa', 'admin', true);
+('11.111.111-1', 'Administrador ALARA', 'admin@alara.cl', '+56911111111', 'SET_ADMIN_PASSWORD_AT_RUNTIME', 'admin', false);
 
 
 SELECT 

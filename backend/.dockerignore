@@ -10,3 +10,13 @@ README.md
 .env.development.local
 .env.test.local
 .env.production.local
+tests/
+coverage/
+uploads/
+.vscode/
+.idea/
+*.pem
+*.key
+*.crt
+*.p12
+*.log
