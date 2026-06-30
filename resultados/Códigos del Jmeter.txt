@@ -1,0 +1,2 @@
+En esta carpeta estan los códigos que se usaron en el jmeter
+
